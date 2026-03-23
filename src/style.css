@@ -48,6 +48,31 @@ body {
     padding: 20px;
 }
 
+/* Floating chat button */
+.chat-fab{
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 64px;
+    height: 64px;
+    border: none;
+    border-radius: 50%;
+    background: #007bff;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    z-index: 1100;
+}
+
+.chat-fab:hover{
+    background:#0056b3;
+}
+
+.chat-fab.hidden{
+    display:none;
+}
+
 /* Chat Sidebar */
 .sidebar-right{
     position: fixed;
@@ -98,6 +123,32 @@ body {
     background:white;
     box-sizing:border-box;
 }
+
+.chat-header-title{
+    font-size:16px;
+    font-weight:bold;
+}
+
+.close-chat-btn{
+    width:32px;
+    height:32px;
+    border:none;
+    border-radius:50%;
+    background:#e0e0e0;
+    color:#333;
+    font-size:22px;
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+}
+
+.close-chat-btn:hover{
+    background:#cfcfcf;
+}
+
 
 /* Chat Messages */
 .chat-messages {

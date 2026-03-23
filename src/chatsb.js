@@ -1,5 +1,6 @@
 const sidebar = document.getElementById("chatSidebar");
-const toggleBtn = document.getElementById("toggleChat");
+const openChatBtn = document.getElementById("openChatBtn");
+const closeChatBtn = document.getElementById("closeChatBtn");
 const input = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
 const messages = document.getElementById("chatMessages");
@@ -7,9 +8,18 @@ const test = document.getElementById("sendOutput");
 const resizeHandle = document.getElementById("resizeHandle");
 
 /* Toggle sidebar */
-toggleBtn.onclick = () => {
-    sidebar.classList.toggle("open");
-};
+function openChat() {
+    sidebar.classList.add("open");
+    openChatBtn.classList.add("hidden");
+}
+
+function closeChat() {
+    sidebar.classList.remove("open");
+    openChatBtn.classList.remove("hidden");
+}
+
+openChatBtn.addEventListener("click", openChat);
+closeChatBtn.addEventListener("click", closeChat);
 
 /* Send message */
 function sendMessage() {
