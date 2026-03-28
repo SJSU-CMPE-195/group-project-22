@@ -223,6 +223,18 @@ body {
 .output-message li {
     margin: 4px 0;
 }
+.thinking-message {
+    font-size: 14px;
+    color: #888;
+    font-style: italic;
+    padding: 2px 4px;
+    margin: 2px 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
 
 #fileUploadPanel {
     position: fixed;

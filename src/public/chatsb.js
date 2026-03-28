@@ -35,37 +35,97 @@ async function sendMessage() {
 
     chatHistory.push({ role: "user", content: text });
 
+    // Temporary loading message
+    const loadingMsg = createMsg("thinking-message", "Thinking...");
+    messages.prepend(loadingMsg);
+
     const payload = {
-      model: "qwen/qwen3.5-9b",
-      messages: chatHistory,
-      temperature: 0.7
+        model: "qwen/qwen3.5-9b",
+        messages: chatHistory,
+        temperature: 0.7,
+        stream: true
     };
 
-    console.log("Sending JSON:", JSON.stringify(payload));
-
     try {
-      const response = await fetch("http://localhost:1234/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
+        await new Promise(requestAnimationFrame);
 
-      const data = await response.json();
-      console.log("Response JSON:", data);
+        const response = await fetch("http://localhost:1234/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
 
-      if (!response.ok) {
-        throw new Error(data?.error?.message || "Request failed");
-      }
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(errText || "Request failed");
+        }
 
-      const reply = data?.choices?.[0]?.message?.content || "(no reply)";
-      sendOutput(reply);
-      chatHistory.push({ role: "assistant", content: reply });
+        if (!response.body) {
+            throw new Error("Streaming not supported by this response");
+        }
+
+        const msg = document.createElement("div");
+        msg.className = "output-message";
+        messages.prepend(msg);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
+        let fullReply = "";
+        let buffer = "";
+        let streamFinished = false;
+
+        while (!streamFinished) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith("data:")) continue;
+
+                const dataStr = trimmed.slice(5).trim();
+
+                if (dataStr === "[DONE]") {
+                    break;
+                }
+
+                try {
+                    const data = JSON.parse(dataStr);
+                    const token = data?.choices?.[0]?.delta?.content || "";
+
+                    if (token) {
+                        fullReply += token;
+
+                        const rawHtml = marked.parse(fullReply);
+                        const safeHtml = DOMPurify.sanitize(rawHtml);
+                        msg.innerHTML = safeHtml;
+                    }
+                } catch (e) {
+                    console.warn("Bad stream chunk:", dataStr);
+                }
+            }
+        }
+        loadingMsg.remove();
+        // Final markdown render after stream completes
+        const rawHtml = marked.parse(fullReply || "(no reply)");
+        const safeHtml = DOMPurify.sanitize(rawHtml);
+        msg.innerHTML = safeHtml;
+
+        chatHistory.push({ role: "assistant", content: fullReply || "(no reply)" });
+        // Remove loading message and create live output box
+        
 
     } catch (err) {
-      console.error(err);
-      sendOutput("Error: " + err.message);
+        console.error(err);
+        loadingMsg.remove?.();
+        sendOutput("Error: " + err.message);
     }
 }
 
