@@ -3,7 +3,8 @@
     <head>
         <meta charset="UTF-8" />
         <title>View pdf</title>
-        <script src="view.js" type="module"></script>
+        <script> window.pdf_URL = "{{ url_for('static', filename='StanfordPaper1.pdf') }}"; </script>
+        <script src="{{ url_for('static', filename='view.js') }}" type="module"></script>
     </head>
     <body>
         <h1 style="text-align:center;">Pdf</h1>

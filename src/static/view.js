@@ -4,7 +4,7 @@ import * as pdfjsLib from 'https://mozilla.github.io/pdf.js/build/pdf.mjs';
      // get the worker code as well
      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
      // setting our pdf url
-     const url = "./StanfordPaper1.pdf"
+     const url = window.pdf_URL;
 
      // getting the document object
      const doc = pdfjsLib.getDocument(url);
