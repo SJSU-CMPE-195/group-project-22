@@ -41,17 +41,17 @@ import * as pdfjsLib from 'https://mozilla.github.io/pdf.js/build/pdf.mjs';
      
  //This is the end of the setup code.   
 
-let button =  document.getElementById("NextLine");
-let pageButton = document.getElementById("nextPage");
+let nextLineBtn =  document.getElementById("NextLine");
+let nextPageBtn = document.getElementById("nextPage");
 var textDiv = document.getElementById("textDiv");
 var stepIn = document.getElementById("stepIn")
 var currentText = null;
 addText(text);
 var numTimes = -1;
-button.addEventListener("click", function() {
+nextLineBtn.addEventListener("click", function() {
     //this prints the line
     if(numTimes < text.items.length){
-       numTimes += 1;
+       numTimes++;
        console.log(numTimes);
        if(numTimes > 0) {
           textDiv.childNodes[numTimes-1].style.backgroundColor = "transparent";
@@ -59,25 +59,48 @@ button.addEventListener("click", function() {
        textDiv.childNodes[numTimes].style.backgroundColor = "yellow";
        currentText = textDiv.childNodes[numTimes].innerText;
     }
+    lines[numTimes].scrollIntoView({behavior: "smooth", block: "center"});
 });
 
-stepIn.addEventListener("click", function() {
-     if(currentText == null) {
-        alert("No line works");
-     }
-     else {
-        alert(currentText);
-     }
+let prevLineBtn = document.getElementById("prevLine");
+prevLineBtn.addEventListener("click", function() {
+    if(numTimes >= 0){
+        textDiv.childNodes[numTimes].style.backgroundColor = "transparent";
+        numTimes -= 1;
+        textDiv.childNodes[numTimes].style.backgroundColor = "yellow";
+    }
+        lines[numTimes].scrollIntoView({behavior: "smooth", block: "center"});
 });
-pageButton.addEventListener("click", function() {
+
+let prevPageBtn = document.getElementById("prevPage");
+prevPageBtn.addEventListener("click", function() {
+    getPrevPage();
+});
+
+nextPageBtn.addEventListener("click", function() {
     getNextPage();
 });
 
+async function getPrevPage() {
+    if(num > 1) {
+        num -= 1;
+        page = await pdf.getPage(num);
+        text = await page.getTextContent();
+        numTimes = -1;
+        addText(text);
+        page.render(renderContext);
+    }
+}
 
 
 
 async function getNextPage() {
-   num = num +1;
+    // if at last page, do nothing
+    if (num >= pdf.numPages) {
+        return;
+    }
+
+   num += 1;
    page = await pdf.getPage(num);
    text = await page.getTextContent();
    numTimes = -1;
@@ -86,22 +109,30 @@ async function getNextPage() {
 }
 
 function addText(text) {
-    // delete any existing child nodes.
-    while(textDiv.hasChildNodes() && num > 1) {
-        textDiv.removeChild(textDiv.lastChild);
-    }
-    for(let i = 0; i < text.items.length; i++) {
-        // this creates the new <p> element.
-         const newPtag = document.createElement("p");
-         // now add text to the p tage.
-         const tt = document.createTextNode(text.items[i].str);
-         newPtag.appendChild(tt);
-    
+    // clears the text div
+    textDiv.innerHTML = "";
+
+    for(let item of text.items) {
+        const str = item.str.trim();
+        // skips empty lines 
+        if (str.length == 0){
+            continue;
+         }
+        const p = document.createElement("p");
+        p.textContent = str;
         // Now add to div
-        textDiv.appendChild(newPtag);
+        textDiv.appendChild(p);
     }
 }
 
+const toggleBtn = document.getElementById("togglePdf");
+const pdfContainer = document.getElementById("pdf");
 
-
+toggleBtn.addEventListener("click", function() {
+    if (pdfContainer.style.display === "none") {
+        pdfContainer.style.display = "block";
+    } else {
+        pdfContainer.style.display = "none";
+    }
+});
 // frin
