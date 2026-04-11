@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Chat Sidebar Layout</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script> 
 </head>
@@ -54,8 +54,10 @@
 <button class="upload-fab" id="openUploadBtn">Upload</button>
 
 <div id="pdf-source" style="position:absolute; left:-9999px; width:800px; background:#fff; color:#000; padding:20px;"></div>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
 
-<script src="chatsb.js"></script>
-<script src="filepanelupload.js"></script>
+<script src="{{ url_for('static', filename='chatsb.js') }}"></script>
+<script src="{{ url_for('static', filename='filepanelupload.js') }}"></script>
 </body>
 </html>

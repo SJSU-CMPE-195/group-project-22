@@ -21,38 +21,135 @@ function closeChat() {
 openChatBtn.addEventListener("click", openChat);
 closeChatBtn.addEventListener("click", closeChat);
 
+let chatHistory = [
+    { role: "system", content: "You are a helpful assistant." }
+];
+
 /* Send message */
-function sendMessage() {
+async function sendMessage() {
     const text = input.value.trim();
-    if (text === "") return;
+    if (!text) return;
 
-    const msg = document.createElement("div");
-    msg.className = "message";
-    msg.textContent = text;
-
-    // bottom aligned chat (older messages moved up)
-    messages.prepend(msg);
-
+    messages.prepend(createMsg("message", text));
     input.value = "";
+
+    chatHistory.push({ role: "user", content: text });
+
+    // Temporary loading message
+    const loadingMsg = createMsg("thinking-message", "Thinking");
+    messages.prepend(loadingMsg);
+
+    const payload = {
+        model: "qwen3.5:9b",
+        messages: chatHistory,
+        temperature: 0.7,
+        stream: true
+    };
+
+    try {
+        await new Promise(requestAnimationFrame);
+
+        const response = await fetch("http://localhost:11434/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(errText || "Request failed");
+        }
+
+        if (!response.body) {
+            throw new Error("Streaming not supported by this response");
+        }
+
+        const msg = document.createElement("div");
+        msg.className = "output-message";
+        messages.prepend(msg);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
+        let fullReply = "";
+        let buffer = "";
+        let streamFinished = false;
+
+        while (!streamFinished) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith("data:")) continue;
+
+                const dataStr = trimmed.slice(5).trim();
+
+                if (dataStr === "[DONE]") {
+                    break;
+                }
+
+                try {
+                    const data = JSON.parse(dataStr);
+                    const token = data?.choices?.[0]?.delta?.content || "";
+
+                    if (token) {
+                        fullReply += token;
+
+                        const rawHtml = marked.parse(fullReply);
+                        const safeHtml = DOMPurify.sanitize(rawHtml);
+                        msg.innerHTML = safeHtml;
+                    }
+                } catch (e) {
+                    console.warn("Bad stream chunk:", dataStr);
+                }
+            }
+        }
+        loadingMsg.remove();
+        // Final markdown render after stream completes
+        const rawHtml = marked.parse(fullReply || "(no reply)");
+        const safeHtml = DOMPurify.sanitize(rawHtml);
+        msg.innerHTML = safeHtml;
+
+        chatHistory.push({ role: "assistant", content: fullReply || "(no reply)" });
+        // Remove loading message and create live output box
+        
+
+    } catch (err) {
+        console.error(err);
+        loadingMsg.remove?.();
+        sendOutput("Error: " + err.message);
+    }
+}
+
+function createMsg(className, text) {
+    const div = document.createElement("div");
+    div.className = className;
+    div.textContent = text;
+    return div;
 }
 
 /* Send Output to message (test) */
-function sendOuput() {
-    const text = input.value.trim();
-    if (text === "") return;
-
+function sendOutput(markdownText) {
     const msg = document.createElement("div");
     msg.className = "output-message";
-    msg.textContent = text;
 
-    // bottom aligned chat (older messages moved up)
+    const rawHtml = marked.parse(markdownText);
+    const safeHtml = DOMPurify.sanitize(rawHtml);
+
+    msg.innerHTML = safeHtml;
     messages.prepend(msg);
-
-    input.value = "";
 }
 
 sendBtn.onclick = sendMessage;
-test.onclick = sendOuput;
+//test.onclick = sendOuput;
 
 input.addEventListener("keypress", function(e){
     if(e.key === "Enter"){
