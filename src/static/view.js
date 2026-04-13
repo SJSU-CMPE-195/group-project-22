@@ -44,7 +44,7 @@ import * as pdfjsLib from 'https://mozilla.github.io/pdf.js/build/pdf.mjs';
 let nextLineBtn =  document.getElementById("NextLine");
 let nextPageBtn = document.getElementById("nextPage");
 var textDiv = document.getElementById("textDiv");
-var stepIn = document.getElementById("stepIn")
+var stepInBtn = document.getElementById("StepIn")
 var currentText = null;
 addText(text);
 var numTimes = -1;
@@ -72,6 +72,10 @@ prevLineBtn.addEventListener("click", function() {
         lines[numTimes].scrollIntoView({behavior: "smooth", block: "center"});
 });
 
+stepInBtn.addEventListener("click", function() {
+    // add a branch to check if they have documents left to step into before requesting a webpage.
+    getWebPage();
+});
 let prevPageBtn = document.getElementById("prevPage");
 prevPageBtn.addEventListener("click", function() {
     getPrevPage();
@@ -94,6 +98,7 @@ async function getPrevPage() {
 
 
 
+
 async function getNextPage() {
     // if at last page, do nothing
     if (num >= pdf.numPages) {
@@ -107,11 +112,23 @@ async function getNextPage() {
    addText(text)
    page.render(renderContext);
 }
+async function getWebPage() {
+    // add a branch to check if there are no stepins.
+    const response = await fetch("/getWebpage", {
+      method: "POST",
+      headers: {
+         "Content-Type": "application/json",
+      },
+      body: JSON.stringify(currentText),
 
+    });
+    var result = await response.json();
+    var resultObj = JSON.parse(result);
+    alert(resultObj.link)
+}
 function addText(text) {
     // clears the text div
     textDiv.innerHTML = "";
-
     for(let item of text.items) {
         const str = item.str.trim();
         // skips empty lines 
