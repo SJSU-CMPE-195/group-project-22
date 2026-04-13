@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <title>View pdf</title>
-        <script src="view.js" type="module"></script>
+        <script type ="module" src="{{ url_for('static', filename='view.js') }}"></script>
     </head>
     <body>
         <h1 style="text-align:center;">Pdf Viewer</h1>
@@ -12,6 +12,8 @@
         <button id="nextPage">Next Page</button>
         <button id="prevPage">Previous Page</button>
         <button id="togglePdf">Show/Hide PDF</button>
+        <button id="stepIn">Step In</button>
+        <button id="stepOut">Step Out</button>
         <div>
         <canvas id="pdf" style="position:absolute; right: 100px;border: 1px solid black; direction:ltr"></canvas>
         </div>
