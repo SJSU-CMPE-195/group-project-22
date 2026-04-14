@@ -20,9 +20,9 @@ def getW():
     jsonResult = jsonify(json.dumps(jsonObj))
     return jsonResult
 
-@app.route("/sidebar")
+@app.route("/app")
 def home():
-    return render_template("sidebar.html")
+    return render_template("app.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
