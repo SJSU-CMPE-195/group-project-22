@@ -1,3 +1,5 @@
+import { getCurrentPageText } from "./view.js";
+
 const sidebar = document.getElementById("chatSidebar");
 const openChatBtn = document.getElementById("openChatBtn");
 const closeChatBtn = document.getElementById("closeChatBtn");
@@ -27,8 +29,16 @@ let chatHistory = [
 
 /* Send message */
 async function sendMessage() {
+    console.log("chatHistory after user message:", chatHistory);
     const text = input.value.trim();
     if (!text) return;
+
+    if (text.includes('[Page]')) {
+        const currentPageText = getCurrentPageText();
+        chatHistory.push({ role: "user", content: currentPageText});
+        messages.prepend(createMsg("message", text + ": Current Page Added to Context"));
+        return;
+    }
 
     messages.prepend(createMsg("message", text));
     input.value = "";
@@ -40,7 +50,7 @@ async function sendMessage() {
     messages.prepend(loadingMsg);
 
     const payload = {
-        model: "qwen3.5:9b",
+        model: "tinyllama:latest",
         messages: chatHistory,
         temperature: 0.7,
         stream: true

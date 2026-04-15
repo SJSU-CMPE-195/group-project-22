@@ -164,7 +164,14 @@ async function getPrevPage() {
     }
 }
 
+export function getCurrentPageText() {
+    if (!text || !text.items) return "";
 
+    return text.items
+        .map(item => item.str?.trim() || "")
+        .filter(str => str.length > 0)
+        .join("\n");
+}
 
 
 async function getNextPage() {
