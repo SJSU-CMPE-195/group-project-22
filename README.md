@@ -92,11 +92,11 @@ python ./src/app.py
 ---
 ## Problem Statement
 
-[2-3 sentences describing the problem you're solving and why it matters]
+Students today heavily rely on digital devices to keep and learn from for their overall understanding in courses, but due to the large pools of information they have to go through on a daily basis they are often overwhelmed. Students are found to underperform on tests when multitasking beforehand, having a loss of focus switching through many different concepts.
 
 ## Solution
 
-[2-3 sentences describing your solution approach]
+The LearningDebugger is a debugging-styled LLM study tool assisting in comprehension and navigation through texts for students. Users will be able to traverse line by line, step in and out of those concepts unfamiliar to them onto additional relevant resources for context and understanding and be provided an interactive chat where they can ask any additional questions. With this solution, it provides a way to quickly switch between notes, PDFs, info from sites, and other resources while providing additional features to build up overall understanding.
 
 ### Key Features
 
