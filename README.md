@@ -14,7 +14,83 @@
 **Advisor:** [KaiKai Liu]
 
 ---
+## Demo
 
+[Link to demo video or GIF]
+
+**Live Demo:** [URL if deployed]
+
+---
+## Project Description
+
+This web application is an AI assistant that allows the user to cluster study material like a textbook or notes. It allows the user to view those documents going line by line and stepping in and out to different materials to the relevant sections within those materials like a debugger. If you do not have enough source, the app will provide the user relevant websites. The AI chat at the side can provide clear summaries about the page/subject highlighted by the user. 
+
+---
+## Proof of Concept Scope
+[What does this PoC demonstrate? What is NOT included yet?]
+
+---
+## Screenshots
+
+| Feature | Screenshot |
+|---------|------------|
+| [Feature 1] | ![Screenshot](docs/screenshots/feature1.png) |
+| [Feature 2] | ![Screenshot](docs/screenshots/feature2.png) |
+
+---
+
+## Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| Frontend | HTML, CSS, JavaScript |
+| Backend | Python (Flask), Ollama (local LLM) |
+| Database | ChromaDB |
+| Deployment | N/A |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [Flask] v.3.1.3+
+- [flask_cors] v.6.0.2+
+- [ollama] v.0.6.1+
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/SJSU-CMPE-195/group-project-group9.git
+cd group-project-group9
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your values
+
+# Run database migrations (if applicable)
+[migration command]
+```
+
+---
+### Running Locally
+
+```bash
+# Development mode
+python ./src/app.py 
+
+# The app will be available at http://localhost:5000
+```
+
+---
+## What's Next (195B)
+[Brief list of features to be implemented next semester]
+
+---
 ## Problem Statement
 
 [2-3 sentences describing the problem you're solving and why it matters]
@@ -30,69 +106,6 @@
 - Feature 3
 
 ---
-
-## Demo
-
-[Link to demo video or GIF]
-
-**Live Demo:** [URL if deployed]
-
----
-
-## Screenshots
-
-| Feature | Screenshot |
-|---------|------------|
-| [Feature 1] | ![Screenshot](docs/screenshots/feature1.png) |
-| [Feature 2] | ![Screenshot](docs/screenshots/feature2.png) |
-
----
-
-## Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| Frontend | |
-| Backend | |
-| Database | |
-| Deployment | |
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- [Prerequisite 1] v.X.X+
-- [Prerequisite 2] v.X.X+
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/SJSU-CMPE-195/group-project-group9.git
-cd group-project-group9
-
-# Install dependencies
-[install command]
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your values
-
-# Run database migrations (if applicable)
-[migration command]
-```
-
-### Running Locally
-
-```bash
-# Development mode
-[dev command]
-
-# The app will be available at http://localhost:XXXX
-```
-
 ### Running Tests
 
 ```bash
