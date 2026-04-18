@@ -69,6 +69,7 @@ cd group-project-group9
 
 # Install dependencies
 pip install -r requirements.txt
+pip install chromadb
 
 # Run database migrations (if applicable)
 [migration command]
