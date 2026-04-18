@@ -1,4 +1,4 @@
-# Project Title
+# LearningDebugger
 
 > AI Study tool that acts like a code debugger through documents 
 
@@ -35,6 +35,7 @@ This web application is an AI assistant that allows the user to cluster study ma
 ## Proof of Concept Scope
 
 The proof of concepts demonstrates functional UI line by line document navigation, ability to generate pdf from webpage link, ability to change pages, and step in, step out. Step in output can be seen, but the UI has not been updated yet with the relevant text highlighted for that document. Website link and text are not updated on the UI, but the output can be seen. The chat functionality works where the user can ask for help, but chat history cannot store large amounts of text.
+
 ---
 ## Screenshots
 
@@ -79,7 +80,6 @@ cd group-project-group9
 
 # Install dependencies
 pip install -r requirements.txt
-pip install chromadb
 
 # Run database migrations (if applicable)
 [migration command]
