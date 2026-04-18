@@ -20,6 +20,9 @@ Basic UI functionality and Step In output demo (Look at the screenshots for othe
 
 Webpage URL fetch and PDF export demo: [PDF export demo](https://drive.google.com/file/d/1Yx7nBlVo-ft7-BIyjnUT5rMikSesaomh/view?usp=sharing)
 
+Chat Functionality (grabbing current page context): [Chat demo](https://drive.google.com/file/d/147_XFIb9aXVr1SXZ4boevXgZzNn-65fk/view?usp=sharing) 
+
+
 
 **Live Demo:** [URL if deployed]
 
@@ -30,6 +33,7 @@ This web application is an AI assistant that allows the user to cluster study ma
 
 ---
 ## Proof of Concept Scope
+
 The proof of concepts demonstrates functional UI line by line document navigation, ability to generate pdf from webpage link, ability to change pages, and step in, step out. Step in output can be seen, but the UI has not been updated yet with the relevant text highlighted for that document. Website link and text are not updated on the UI, but the output can be seen. The chat functionality works where the user can ask for help, but chat history cannot store large amounts of text.
 ---
 ## Screenshots
@@ -60,8 +64,11 @@ The proof of concepts demonstrates functional UI line by line document navigatio
 - [Flask] v.3.1.3+
 - [flask_cors] v.6.0.2+
 - [ollama] v.0.6.1+
+- [requests] 2.32.5+
 - [fpdf2] v.2.8.4+
-- [ollama] v.4.14.3+
+- [beautifulsoup4] v.4.14.3+
+- [chromsdb] v.1.5.8+
+- [pypdf] v.6.10.2+
 
 ### Installation
 
