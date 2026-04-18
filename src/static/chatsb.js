@@ -196,33 +196,6 @@ const fetchBtn      = document.getElementById('fetch-btn');
 const exportPdfBtn  = document.getElementById('export-pdf-btn');
 const fetchUrlInput = document.getElementById('fetch-url');
 const fetchStatus   = document.getElementById('fetch-status');
-const pdfSource     = document.getElementById('pdf-source');
-
-const PROXIES = [
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-];
-
-async function fetchWithFallback(url) {
-  for (const proxy of PROXIES) {
-    try {
-      const res = await fetch(proxy(url));
-      if (res.ok) return await res.text();
-    } catch (_) {}
-  }
-  throw new Error('All proxies failed.');
-}
-
-function extractText(html) {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const main = doc.querySelector('#mw-content-text, article, main') || doc.body;
-  ['script','style','nav','footer','header','sup','.mw-editsection']
-    .forEach(sel => main.querySelectorAll(sel).forEach(el => el.remove()));
-  return (main.textContent || '')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/[ \t]+/g, ' ')
-    .trim();
-}
 
 fetchBtn.addEventListener('click', async () => {
   const url = fetchUrlInput.value.trim();
@@ -233,9 +206,22 @@ fetchBtn.addEventListener('click', async () => {
   fetchStatus.textContent = 'Fetching...';
 
   try {
-    pdfSource.innerHTML = await fetchWithFallback(url);
+    const res = await fetch('/fetch-page', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Request failed');
+    }
+
+    const blob = await res.blob();
+    window._fetchedPdfBlob = blob;
     exportPdfBtn.disabled = false;
     fetchStatus.textContent = 'Page fetched! Ready to export.';
+
   } catch (err) {
     fetchStatus.textContent = 'Error: ' + err.message;
   } finally {
@@ -243,37 +229,13 @@ fetchBtn.addEventListener('click', async () => {
   }
 });
 
-exportPdfBtn.addEventListener('click', async () => {
-  exportPdfBtn.disabled = true;
-  fetchStatus.textContent = 'Generating PDF...';
-
-  try {
-    const text = extractText(pdfSource.innerHTML);
-    if (text.length < 50) throw new Error('No text content found.');
-
-    const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
-    const margin = 15;
-    const maxWidth = pdf.internal.pageSize.getWidth() - margin * 2;
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const lineHeight = 7;
-    let y = margin;
-
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(11);
-
-    for (const line of pdf.splitTextToSize(text, maxWidth)) {
-      if (y + lineHeight > pageHeight - margin) { pdf.addPage(); y = margin; }
-      pdf.text(line, margin, y);
-      y += lineHeight;
-    }
-
-    const filename = fetchUrlInput.value.replace(/https?:\/\//, '').replace(/[^a-z0-9]/gi, '_').slice(0, 50) + '.pdf';
-    pdf.save(filename);
-    fetchStatus.textContent = 'PDF saved!';
-
-  } catch (err) {
-    fetchStatus.textContent = 'PDF error: ' + err.message;
-  } finally {
-    exportPdfBtn.disabled = false;
-  }
+exportPdfBtn.addEventListener('click', () => {
+  if (!window._fetchedPdfBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(window._fetchedPdfBlob);
+  const filename = fetchUrlInput.value.replace(/https?:\/\//, '').replace(/[^a-z0-9]/gi, '_').slice(0, 50) + '.pdf';
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  fetchStatus.textContent = 'PDF saved!';
 });

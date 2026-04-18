@@ -14,23 +14,6 @@
 **Advisor:** [KaiKai Liu]
 
 ---
-
-## Problem Statement
-
-[2-3 sentences describing the problem you're solving and why it matters]
-
-## Solution
-
-[2-3 sentences describing your solution approach]
-
-### Key Features
-
-- Feature 1
-- Feature 2
-- Feature 3
-
----
-
 ## Demo
 
 [Link to demo video or GIF]
@@ -38,12 +21,20 @@
 **Live Demo:** [URL if deployed]
 
 ---
+## Project Description
 
+This web application is an AI assistant that allows the user to cluster study material like a textbook or notes. It allows the user to view those documents going line by line and stepping in and out to different materials to the relevant sections within those materials like a debugger. If you do not have enough source, the app will provide the user relevant websites. The AI chat at the side can provide clear summaries about the page/subject highlighted by the user. 
+
+---
+## Proof of Concept Scope
+[What does this PoC demonstrate? What is NOT included yet?]
+
+---
 ## Screenshots
 
 | Feature | Screenshot |
 |---------|------------|
-| [Feature 1] | ![Screenshot](docs/screenshots/feature1.png) |
+| [Chat: Current Full Page into Context] | ![Screenshot](docs/ChatPageContext.png) |
 | [Feature 2] | ![Screenshot](docs/screenshots/feature2.png) |
 
 ---
@@ -52,10 +43,10 @@
 
 | Category | Technology |
 |----------|------------|
-| Frontend | |
-| Backend | |
-| Database | |
-| Deployment | |
+| Frontend | HTML, CSS, JavaScript |
+| Backend | Python (Flask), Ollama (local LLM) |
+| Database | ChromaDB |
+| Deployment | N/A |
 
 ---
 
@@ -63,8 +54,11 @@
 
 ### Prerequisites
 
-- [Prerequisite 1] v.X.X+
-- [Prerequisite 2] v.X.X+
+- [Flask] v.3.1.3+
+- [flask_cors] v.6.0.2+
+- [ollama] v.0.6.1+
+- [fpdf2] v.2.8.4+
+- [ollama] v.4.14.3+
 
 ### Installation
 
@@ -74,25 +68,45 @@ git clone https://github.com/SJSU-CMPE-195/group-project-group9.git
 cd group-project-group9
 
 # Install dependencies
-[install command]
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your values
+pip install -r requirements.txt
 
 # Run database migrations (if applicable)
 [migration command]
 ```
 
+---
 ### Running Locally
 
 ```bash
 # Development mode
-[dev command]
+python ./src/app.py 
 
-# The app will be available at http://localhost:XXXX
+# The app will be available at http://localhost:5000
 ```
 
+---
+## What's Next (195B)
+1. Implement other desired features as personal developed plans, generated study materials, clarifications and questions chat.
+2. Detailed and appealing UI/UX, simple to use and understand; provides complete feedback, functionality, and support to users.
+3. Fully functional backend, possibly saved local storage in documents and history, possibly accounts, able to last long term with efficiency and error handling. 
+4. Working to make the LLM searching for information and relevant sections more reliable. 
+
+---
+## Problem Statement
+
+Students today heavily rely on digital devices to keep and learn from for their overall understanding in courses, but due to the large pools of information they have to go through on a daily basis they are often overwhelmed. Students are found to underperform on tests when multitasking beforehand, having a loss of focus switching through many different concepts.
+
+## Solution
+
+The LearningDebugger is a debugging-styled LLM study tool assisting in comprehension and navigation through texts for students. Users will be able to traverse line by line, step in and out of those concepts unfamiliar to them onto additional relevant resources for context and understanding and be provided an interactive chat where they can ask any additional questions. With this solution, it provides a way to quickly switch between notes, PDFs, info from sites, and other resources while providing additional features to build up overall understanding.
+
+### Key Features
+
+- Feature 1. Line-by-Line traversal, highlighting text focusing on one concept or sentence at a time
+- Feature 2. Step in/out of text line, into layers of relevant conceptual information and explanations for comprehension
+- Feature 3. Interactive AI chat, real-time questions and answers for extra clarification
+
+---
 ### Running Tests
 
 ```bash
@@ -156,8 +170,9 @@ Use clear, descriptive commit messages:
 
 ## Acknowledgments
 
-- [Resource/Library/Person]
-- [Resource/Library/Person]
+- Project Advisor KaiKai Liu for guidance and feedback during development
+- Flask, Flask-CORS, Ollama for open-source tools building project architecture and core functionality
+- All team members for collaboration and contributions
 
 ---
 

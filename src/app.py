@@ -1,8 +1,13 @@
-from flask import Flask, jsonify, request, render_template, Response, stream_with_context
+from flask import Flask, jsonify, request, render_template, Response, stream_with_context, send_file
 from flask_cors import CORS
 import json
 import chromadb
 import getPython as gP
+import io
+import requests as req
+from fpdf import FPDF
+from bs4 import BeautifulSoup
+
 app = Flask(__name__)
 chromaClient = None
 chromaCollection = None
@@ -44,6 +49,38 @@ def stepIn():
    #obj = {"text": res[0], "pageNum": res[1]}
    #print(json.dumps(obj))
    return jsonify(json.dumps(res))
+@app.route("/fetch-page", methods=['POST'])
+def fetch_page():
+    data = request.get_json()
+    url = data.get('url', '').strip()
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        resp = req.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        
+        for tag in soup(['script', 'style', 'nav', 'footer']):
+            tag.decompose()
+        text = soup.get_text(separator='\n').strip()
+
+        font_path = "/Library/Fonts/Arial Unicode.ttf"
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.add_font('Arial', '', font_path)
+        pdf.set_font('Arial', size=11)
+        pdf.multi_cell(0, 7, text)
+
+        pdf_bytes = pdf.output()
+        return send_file(
+            io.BytesIO(bytes(pdf_bytes)),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='fetched-page.pdf'
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route("/chatMessage", methods=["POST"])
 def chat_message():
     data = request.get_json()
@@ -52,7 +89,6 @@ def chat_message():
 
         def generate():
             stream = gP.getChatResponse(chat_history)
-
             for chunk in stream:
                 content = chunk.get("message", {}).get("content", "")
                 if content:
