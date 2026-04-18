@@ -100,9 +100,9 @@ The LearningDebugger is a debugging-styled LLM study tool assisting in comprehen
 
 ### Key Features
 
-- Feature 1
-- Feature 2
-- Feature 3
+- Feature 1 Line-by-Line Traversal, highlighting text focusing on one concept or sentence at a time
+- Feature 2 Step in/out of text line, into layers of relevant conceptual information and explanations for comprehension
+- Feature 3 Interactive AI chat, real-time questions and answers for extra clarification
 
 ---
 ### Running Tests
