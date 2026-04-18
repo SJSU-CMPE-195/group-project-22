@@ -18,8 +18,7 @@
 
 Basic UI functionality and Step In output demo (Look at the screenshots for other output): [UI demo](https://drive.google.com/file/d/16XsUY231yJXZWnG5HBh0N4AHuJ3Zo0-q/view?usp=sharing)
 
-Webpage URL fetch and PDF export demo [PDF export demo]
-(https://drive.google.com/file/d/1Yx7nBlVo-ft7-BIyjnUT5rMikSesaomh/view?usp=sharing)
+Webpage URL fetch and PDF export demo: [PDF export demo](https://drive.google.com/file/d/1Yx7nBlVo-ft7-BIyjnUT5rMikSesaomh/view?usp=sharing)
 
 
 **Live Demo:** [URL if deployed]
