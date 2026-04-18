@@ -27,8 +27,7 @@ This web application is an AI assistant that allows the user to cluster study ma
 
 ---
 ## Proof of Concept Scope
-[What does this PoC demonstrate? What is NOT included yet?]
-
+The proof of concepts demonstrates functional UI line by line document navigation, ability to generate pdf from webpage link, ability to change pages, and step in, step out. Step in output can be seen, but the UI has not been updated yet with the relevant text highlighted for that document. Website link and text are not updated on the UI, but the output can be seen. The chat functionality works where the user can ask for help, but chat history cannot store large amounts of text.
 ---
 ## Screenshots
 
@@ -88,7 +87,7 @@ python ./src/app.py
 ## What's Next (195B)
 1. Implement other desired features as personal developed plans, generated study materials, clarifications and questions chat.
 2. Detailed and appealing UI/UX, simple to use and understand; provides complete feedback, functionality, and support to users.
-3. Fully functional backend, possibly saved local storage in documents and history, possibly accounts, able to last long term with efficiency and error handling. 
+3. Fully functional backend and chromadb, possibly saved local storage in documents and history, possibly accounts, able to last long term with efficiency and error handling. 
 4. Working to make the LLM searching for information and relevant sections more reliable. 
 
 ---
