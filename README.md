@@ -88,7 +88,10 @@ python ./src/app.py
 
 ---
 ## What's Next (195B)
-[Brief list of features to be implemented next semester]
+1. Implement other desired features as personal developed plans, generated study materials, clarifications and questions chat.
+2. Detailed and appealing UI/UX, simple to use and understand; provides complete feedback, functionality, and support to users.
+3. Fully functional backend, possibly saved local storage in documents and history, possibly accounts, able to last long term with efficiency and error handling. 
+4. Working to make the LLM searching for information and relevant sections more reliable. 
 
 ---
 ## Problem Statement
