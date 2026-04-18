@@ -57,6 +57,8 @@ This web application is an AI assistant that allows the user to cluster study ma
 - [Flask] v.3.1.3+
 - [flask_cors] v.6.0.2+
 - [ollama] v.0.6.1+
+- [fpdf2] v.2.8.4+
+- [ollama] v.4.14.3+
 
 ### Installation
 
