@@ -1,7 +1,18 @@
+
+export let resetViewCallback = null;
+export function registerResetViewCallback(callback) {
+    resetViewCallback = callback;
+}
+export let loadFileCallback = null;
+export function registerLoadFileCallback(callback) {
+    loadFileCallback = callback;
+}
+export let currFileIndex = 0; // Initialize currFileIndex to 0
+
 const filesPanel = document.getElementById("fileUploadPanel");
 const openUploadBtn = document.getElementById("openUploadBtn");
-
-let fileInput = [];
+const defaultFiles = ["StanfordPaper1.pdf", "ConstitutionWords.pdf", "constitution.pdf", "holmes.pdf"];
+export let fileInput = defaultFiles.map(name => ({id: crypto.randomUUID(), type: "default", name })); // Initialize with default files
 
 function openUpload() {
     filesPanel.classList.add("open");
@@ -16,6 +27,7 @@ function closeUpload() {
 function initToggle() {
     filesPanel.innerHTML = `
     <div class="upload-panel">
+        <div class="upload-resize-handle"></div>
         <div class="upload-panel-header">
             <button class="close-upload-btn" id="closeUploadBtn">×</button>
             <div class="upload-panel-title">Upload Files</div>
@@ -39,15 +51,30 @@ function showFilesList() {
         item.className = "file-item";
         item.draggable = true;
         item.dataset.index = index;
+        item.dataset.id = file.id;
         item.innerHTML = `
         <span class="drag-handle">☰</span>
-        <span class="file-order">${index + 1}</span>
-        <span class="file-name">${file.name}</span>
+        <span class="file-order">${index + 1} -</span>
+        <span class="file-name" title="${file.name}">
+            ${file.name}
+        </span>
         <input type="checkbox" class="file-checkbox" data-index="${index}" checked>
-        <button class="move-up-btn" data-index="${index}">↑</button>
-        <button class="move-down-btn" data-index="${index}">↓</button>
+        <button class="move-up-btn" data-index="${index}">▲</button>
+        <button class="move-down-btn" data-index="${index}">▼</button>
         <button class="remove-btn" data-index="${index}">✖</button>`;
         list.appendChild(item);
+        item.addEventListener("click", (e) => {
+            if (
+                e.target.classList.contains("move-up-btn") ||
+                e.target.classList.contains("move-down-btn") ||
+                e.target.classList.contains("remove-btn") ||
+                e.target.classList.contains("file-checkbox")
+            ) {
+                return; // Ignore clicks on buttons and checkboxes
+            }
+
+            loadFileByIndex(index);
+        });
     });
 
     document.querySelectorAll(".move-up-btn").forEach(btn => {
@@ -55,7 +82,11 @@ function showFilesList() {
             const index = parseInt(btn.getAttribute("data-index"));
             if (index > 0) {
                 [fileInput[index - 1], fileInput[index]] = [fileInput[index], fileInput[index - 1]];
+                currFileIndex = index - 1; // Update currFileIndex to the new position
+                const entry = fileInput[currFileIndex];
+                loadFileCallback(entry.type === "default" ? entry.name : entry.file);
                 showFilesList();
+                highlightSelectedFile();
             }
         };
     });
@@ -65,7 +96,11 @@ function showFilesList() {
             const index = parseInt(btn.getAttribute("data-index"));
             if (index < fileInput.length - 1) {
                 [fileInput[index + 1], fileInput[index]] = [fileInput[index], fileInput[index + 1]];
+                currFileIndex = index + 1; // Update currFileIndex to the new position
+                const entry = fileInput[currFileIndex];
+                loadFileCallback(entry.type === "default" ? entry.name : entry.file);
                 showFilesList();
+                highlightSelectedFile();
             }
         }
     });
@@ -88,25 +123,38 @@ function enableDragAndDrop() {
             item.classList.add("dragging");
         });
         item.addEventListener("dragend", () => {
-            item.classList.remove("dragging");
+            item.classList.remove("dragging");            
+            const activeId = fileInput[currFileIndex]?.id;
+            const items = [...list.querySelectorAll(".file-item")];
+            fileInput = items.map(item => {
+                const id = item.dataset.id;
+                return fileInput.find(file => file.id === id);
+            });
+            currFileIndex = fileInput.findIndex(file => file.id === activeId);
+            showFilesList();
+            highlightSelectedFile();
+            const entry = fileInput[currFileIndex];
+            if (entry.type === "default") {
+                loadFileCallback(entry.name);
+            } else if (entry.type === "uploaded") {
+                loadFileCallback(entry.file);
+            }
             draggingItem = null;
-        const newOrder = [...list.querySelectorAll(".file-item")].map(el => el.querySelector(".file-name").textContent);
-        fileInput = newOrder.map(name => fileInput.find(file => file.name === name));
-        showFilesList();
         });
     });
     list.addEventListener("dragover", (e) => {
         e.preventDefault();
         const afterElement = getDragAfterElement(list, e.clientY);
+        if (!draggingItem) {
+            return;
+        }
         if (afterElement == null) {
             list.appendChild(draggingItem);
         } else {
-            list.insertBefore(draggingItem, afterElement);
+                list.insertBefore(draggingItem, afterElement);
         }
     });
 }
-
-
 
 function getDragAfterElement(container, y) {
     const items = [...container.querySelectorAll(".file-item:not(.dragging)")];
@@ -119,14 +167,57 @@ function getDragAfterElement(container, y) {
 
 function removeFile(index) {
     fileInput.splice(index, 1);
-    showFilesList();
+    if (index === currFileIndex) {
+        nextLineBtn.disabled = true;
+        prevLineBtn.disabled = true;
+        stepInBtn.disabled = true;
+        stepOutBtn.disabled = true;
+        prevPageBtn.disabled = true;
+        nextPageBtn.disabled = true;
+        if (fileInput.length > 0) {
+            numTimes = -1;
+            text = null;
+            textDiv.innerHTML = "";
+            const newIndex = Math.min(currFileIndex, fileInput.length - 1);
+            currFileIndex = newIndex;
+            showFilesList();
+            highlightSelectedFile();
+            const entry = fileInput[currFileIndex];
+            loadFileCallback(entry.type === "default" ? entry.name : entry.file);
+        } else {
+            currFileIndex = 0;
+            showFilesList();
+            clearViewer();
+        }
+    }
+    else if (index < currFileIndex) {
+        currFileIndex--;
+        showFilesList();
+        highlightSelectedFile();
+    }
+    else {
+        showFilesList();
+        highlightSelectedFile();
+    }
+}
+
+function clearViewer() {
+    const canvas = document.getElementById("pdf");
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const textDiv = document.getElementById("textDiv");
+    textDiv.innerHTML = "";
+    textDiv.innerHTML = `<div class="no-file-loaded">No file loaded. Please select a file from the list or upload a new one.</div>`;
+    if (typeof resetViewCallback === "function") {
+        resetViewCallback();
+    }
 }
 
 function handleFileSelect(event) {
     event.preventDefault();
     const files = event.dataTransfer ? event.dataTransfer.files : event.target.files;
     for (let i = 0; i < files.length; i++) {
-        fileInput.push(files[i]);
+        fileInput.push({id: crypto.randomUUID(), type: "uploaded", name: files[i].name, file: files[i] });
     }
     showFilesList();
 }
@@ -140,6 +231,82 @@ function setupFileUpload() {
     fileInputElem.addEventListener("change", handleFileSelect);
 }
 
+function loadFileByIndex(index) {
+    const entry = fileInput[index];
+    currFileIndex = index;
+    if (entry.type === "default") {
+        loadFileCallback(entry.name);
+    } else if (entry.type === "uploaded") {
+        loadFileCallback(entry.file);
+    }
+    console.log(`Loading file: ${entry.name}`);
+    highlightSelectedFile();
+}
+
+export function highlightSelectedFile() {
+    const activeId = fileInput[currFileIndex]?.id;
+    const items = document.querySelectorAll(".file-item");
+    items.forEach(item => {
+        if (item.dataset.id === activeId) {
+            item.classList.add("selected");
+        } else {
+            item.classList.remove("selected");
+        }
+    });
+}
+
+export function setCurrFileIndex(index) {
+    currFileIndex = index;
+}
+
+function setupUploadResize() {
+    const sidebar = document.getElementById("fileUploadPanel");
+    const resizeHandle = sidebar.querySelector(".upload-resize-handle");
+    let isResizing = false;
+
+    resizeHandle.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        isResizing = true;
+        document.body.style.cursor = "ew-resize";
+        document.body.style.userSelect = "none";
+    });
+
+    document.addEventListener("mousemove", (e) => {
+        if (!isResizing) return;
+
+        e.preventDefault();
+        const minWidth = 250;
+        const maxWidth = window.innerWidth * 0.8;
+        let newWidth = e.clientX;
+        if (newWidth < minWidth) newWidth = minWidth;
+        if (newWidth > maxWidth) newWidth = maxWidth;
+        sidebar.style.width = newWidth + "px";
+    });
+
+    document.addEventListener("mouseup", () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+    });
+}
+
+function setupZIndex() {
+    const leftSidebar = document.getElementById("fileUploadPanel");
+    const rightSidebar = document.querySelector(".sidebar-right");
+    if (!leftSidebar || !rightSidebar) return;
+    leftSidebar.addEventListener("mousedown", () => {
+        leftSidebar.style.zIndex = "1000";
+        rightSidebar.style.zIndex = "900";
+    });
+    rightSidebar.addEventListener("mousedown", () => {
+        rightSidebar.style.zIndex = "1000";
+        leftSidebar.style.zIndex = "900";
+    });
+}
+
 initToggle();
+setupUploadResize();
+setupZIndex();
 
 openUploadBtn.addEventListener("click", openUpload);
