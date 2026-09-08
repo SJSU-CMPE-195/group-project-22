@@ -5,15 +5,12 @@ import * as pdfjsLib from 'https://mozilla.github.io/pdf.js/build/pdf.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
 import { fileInput, currFileIndex, registerLoadFileCallback, highlightSelectedFile, setCurrFileIndex, registerResetViewCallback } from "./filepanelupload.js";
 registerLoadFileCallback(loadFile); // Register the loadFile function as a callback
-registerResetViewCallback(resetViewState); // Register the resetViewState function as a callback
+registerResetViewCallback(resetView); // Register the resetViewState function as a callback
  
-let pdf, page, text;
-let num = 1;
-let numTimes = -1;
+import { viewState, updateViewState, resetViewState as resetGlobalViewState, updateButtons } from "./viewState.js";
 const scale = 1;
 const canvas = document.getElementById("pdf");
 const context = canvas.getContext("2d");
-
 let nextLineBtn = document.getElementById("NextLine");
 let nextPageBtn = document.getElementById("nextPage");
 var textDiv = document.getElementById("textDiv");
@@ -23,8 +20,8 @@ document.getElementById("stepIn").addEventListener("click", stepIn);
 document.getElementById("stepOut").addEventListener("click", stepOut);
 export async function stepIn() {
     var stepInChanged = 0
-    if (numTimes >= 0) {
-        stepInText = textDiv.childNodes[numTimes].innerText;
+    if (viewState.numTimes >= 0) {
+        stepInText = textDiv.childNodes[viewState.numTimes].innerText;
         stepInChanged = 1
     }
     if (currFileIndex < fileInput.length - 1) {
@@ -42,6 +39,7 @@ export async function stepIn() {
     else {
         await getWebPage();
     }
+    updateButtons();
 }
 
 async function getRelevantSection(stepLine, file) {
@@ -67,18 +65,20 @@ async function getRelevantSection(stepLine, file) {
     }
     var ind = 1;
     var jIn = 0;
-    var newPage = page;
+    var newPage = viewState.page;
     var count = 0;
-    var newPageText = text;
-    while (jIn < arr.length && ind <= pdf.numPages) {
+    var newPageText = viewState.text;
+    while (jIn < arr.length && ind <= viewState.totalPages) {
         for (let i = 0; i < newPageText.items.length; i++) {
             if (newPageText.items[i].str.includes(arr[jIn])) {
                 console.log("found: " + newPageText.items[i].str);
-                page = newPage;
-                text = newPageText;
-                numTimes = -1;
-                num = ind;
-                addText(text);
+                updateViewState({
+                    page: newPage,
+                    text: newPageText,
+                    currentPage: ind,
+                    numTimes: -1,
+                })
+                addText(newPageText);
                 for (let i = 0; i < textDiv.childNodes.length; i++) {
                     console.log("textDiv:" + textDiv.childNodes[i].innerText);
                     if (textDiv.childNodes[i].innerText.includes(arr[jIn])) {
@@ -93,13 +93,14 @@ async function getRelevantSection(stepLine, file) {
                 }
                 count += 1;
                 console.log(count);
-                const viewport = page.getViewport({ scale });
-                page.render({ canvasContext: context, viewport });
+                const viewport = newPage.getViewport({ scale });
+                newPage.render({ canvasContext: context, viewport });
+                updateButtons();
             }
         }
         ind = ind + 1;
-        if (ind <= pdf.numPages) {
-            newPage = await pdf.getPage(ind)
+        if (ind <= viewState.totalPages) {
+            newPage = await viewState.pdf.getPage(ind)
             newPageText = await newPage.getTextContent();
         }
     }
@@ -111,6 +112,7 @@ export async function stepOut() {
         await loadFile(fileInput[currFileIndex].type === "default" ? fileInput[currFileIndex].name : fileInput[currFileIndex].file);
         highlightSelectedFile();
     }
+    updateButtons();
 }
 
 export async function loadFile(input) {
@@ -125,23 +127,25 @@ export async function loadFile(input) {
 
     // loading document
     const loadingDoc = pdfjsLib.getDocument(params);
-    pdf = await loadingDoc.promise;
-    num = 1;
-    numTimes = -1;
-    page = await pdf.getPage(num);
-    text = await page.getTextContent();
-    addText(text);
-    /*const firstLine = textDiv.childNodes[0];
-    if (firstLine) {
-        firstLine.scrollIntoView({behavior: "smooth", block: "center"});
-    }
-    */
-    const viewport = page.getViewport({ scale });
-    canvas.width = viewport.width;
+    const loadedPdf = await loadingDoc.promise;
+    const firstPage = await loadedPdf.getPage(1);
+    const extractedText = await firstPage.getTextContent();
+    updateViewState({
+        pdf: loadedPdf,
+        page: firstPage,
+        text: extractedText,
+        currentPage: 1,
+        currentLine: 0,
+        numTimes: -1,
+        totalPages: loadedPdf.numPages,
+        mode: "viewing"
+    });
+    addText(extractedText);
+    const viewport = firstPage.getViewport({ scale });
     canvas.height = viewport.height;
-    page.render({ canvasContext: context, viewport });
-    updateNavButtons();
-    updateNavandStepButtons();
+    canvas.width = viewport.width;
+    firstPage.render({ canvasContext: context, viewport });
+    updateButtons();
 }
 
 function fileToDataURL(file) {
@@ -154,32 +158,33 @@ function fileToDataURL(file) {
 }
 
 nextLineBtn.addEventListener("click", function () {
-    if (!text || !text.items || text.items.length === 0) {
+    if (!viewState.text || !viewState.text.items || viewState.text.items.length === 0) {
         return; // No text to navigate through
     }
     //this prints the line
-    if (numTimes < textDiv.childNodes.length - 1) {
-        console.log(numTimes);
-        if (numTimes >= 0) {
-            textDiv.childNodes[numTimes].style.backgroundColor = "transparent";
+    if (viewState.numTimes < textDiv.childNodes.length - 1) {
+        console.log(viewState.numTimes);
+        if (viewState.numTimes >= 0) {
+            textDiv.childNodes[viewState.numTimes].style.backgroundColor = "transparent";
         }
-        numTimes++;
-        textDiv.childNodes[numTimes].style.backgroundColor = "yellow";
-        textDiv.childNodes[numTimes].scrollIntoView({ behavior: "smooth", block: "center" });
+        updateViewState({ numTimes: viewState.numTimes + 1 });
+        textDiv.childNodes[viewState.numTimes].style.backgroundColor = "yellow";
+        textDiv.childNodes[viewState.numTimes].scrollIntoView({ behavior: "smooth", block: "center" });
+        updateButtons();
     }
-
 });
 
 let prevLineBtn = document.getElementById("prevLine");
 prevLineBtn.addEventListener("click", function () {
-    if (!text || !text.items || text.items.length === 0) {
+    if (!viewState.text || !viewState.text.items || viewState.text.items.length === 0) {
         return; // No text to navigate through
     }
-    if (numTimes > 0) {
-        textDiv.childNodes[numTimes].style.backgroundColor = "transparent";
-        numTimes--;
-        textDiv.childNodes[numTimes].style.backgroundColor = "yellow";
-        textDiv.childNodes[numTimes].scrollIntoView({ behavior: "smooth", block: "center" });
+    if (viewState.numTimes > 0) {
+        textDiv.childNodes[viewState.numTimes].style.backgroundColor = "transparent";
+        updateViewState({ numTimes: viewState.numTimes - 1 });
+        textDiv.childNodes[viewState.numTimes].style.backgroundColor = "yellow";
+        textDiv.childNodes[viewState.numTimes].scrollIntoView({ behavior: "smooth", block: "center" });
+        updateButtons();
     }
 });
 
@@ -193,23 +198,28 @@ nextPageBtn.addEventListener("click", function () {
 });
 
 async function getPrevPage() {
-    if (num > 1) {
-        num -= 1;
-        page = await pdf.getPage(num);
-        text = await page.getTextContent();
-        numTimes = -1;
-        addText(text);
-        const viewport = page.getViewport({ scale });
-        page.render({ canvasContext: context, viewport });
-        updateNavButtons();
-        updateNavandStepButtons();
+    if (viewState.currentPage > 1) {
+        const newPageNum = viewState.currentPage - 1;
+        const newPage = await viewState.pdf.getPage(newPageNum);
+        const newText = await newPage.getTextContent();
+        updateViewState({
+            currentPage: newPageNum,
+            page: newPage,
+            text: newText,
+            currentLine: 0,
+            numTimes: -1
+        });
+        addText(newText);
+        const viewport = newPage.getViewport({ scale });
+        newPage.render({ canvasContext: context, viewport });
+        updateButtons();
     }
 }
 
 export function getCurrentPageText() {
-    if (!text || !text.items) return "";
+    if (!viewState.text || !viewState.text.items) return "";
 
-    return text.items
+    return viewState.text.items
         .map(item => item.str?.trim() || "")
         .filter(str => str.length > 0)
         .join("\n");
@@ -218,67 +228,32 @@ export function getCurrentPageText() {
 
 async function getNextPage() {
     // if at last page, do nothing
-    if (num >= pdf.numPages) {
+    if (viewState.currentPage >= viewState.pdf.numPages) {
         return;
     }
 
-    num += 1;
-    page = await pdf.getPage(num);
-    text = await page.getTextContent();
-    numTimes = -1;
-    addText(text);
-    const viewport = page.getViewport({ scale });
-    page.render({ canvasContext: context, viewport });
-    updateNavButtons();
-    updateNavandStepButtons();
+    const newPageNum = viewState.currentPage + 1;
+    const newPage = await viewState.pdf.getPage(newPageNum);
+    const newText = await newPage.getTextContent();
+    updateViewState({
+        currentPage: newPageNum,
+        page: newPage,
+        text: newText,
+        currentLine: 0,
+        numTimes: -1
+    });
+    addText(newText);
+    const viewport = newPage.getViewport({ scale });
+    newPage.render({ canvasContext: context, viewport });
+    updateButtons();
 }
 
-function updateNavButtons() {
-    const prevPageBtn = document.getElementById("prevPage");
-    const nextPageBtn = document.getElementById("nextPage");
-
-    if (!pdf) {
-        prevPageBtn.disabled = true;
-        nextPageBtn.disabled = true;
-        return;
-    }
-    prevPageBtn.disabled = num <= 1;
-    nextPageBtn.disabled = num >= pdf.numPages;
-}
-
-function updateNavandStepButtons() {
-    console.log("updateNavandStepButtons CALLED");
-    console.log("pdf:", pdf);
-    console.log("text:", text);
-    console.log("numTimes:", numTimes);
-    const nextLineBtn = document.getElementById("NextLine");
-    const prevLineBtn = document.getElementById("prevLine");
-    const stepInBtn = document.getElementById("stepIn");
-    const stepOutBtn = document.getElementById("stepOut");
-    const hasPdf = !!pdf;
-    const hasText = text && text.items && text.items.length > 0;
-     console.log("hasPdf:", hasPdf, "hasText:", hasText);
-    nextLineBtn.disabled = !hasText;
-    prevLineBtn.disabled = !hasText;
-    stepInBtn.disabled = !hasPdf;
-    stepOutBtn.disabled = !hasPdf;
-    console.log("nextLineBtn.disabled:", nextLineBtn.disabled);
-    console.log("prevLineBtn.disabled:", prevLineBtn.disabled);
-    console.log("stepInBtn.disabled:", stepInBtn.disabled);
-    console.log("stepOutBtn.disabled:", stepOutBtn.disabled);
-}
-
-export function resetViewState() {
-    pdf = null;
-    page = null;
-    text = null;
-    num = 0;
-    numTimes = -1;
+export function resetView() {
+    resetGlobalViewState();
     textDiv.innerHTML = "";
-    updateNavButtons();
-    updateNavandStepButtons();
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    updateButtons();
 }
-
 
 async function getWebPage() {
     // add a branch to check if there are no stepins.

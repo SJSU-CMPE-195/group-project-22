@@ -84,6 +84,7 @@ function showFilesList() {
                 [fileInput[index - 1], fileInput[index]] = [fileInput[index], fileInput[index - 1]];
                 currFileIndex = index - 1; // Update currFileIndex to the new position
                 const entry = fileInput[currFileIndex];
+                resetViewCallback(); // Reset the view state when files are reordered
                 loadFileCallback(entry.type === "default" ? entry.name : entry.file);
                 showFilesList();
                 highlightSelectedFile();
@@ -98,6 +99,7 @@ function showFilesList() {
                 [fileInput[index + 1], fileInput[index]] = [fileInput[index], fileInput[index + 1]];
                 currFileIndex = index + 1; // Update currFileIndex to the new position
                 const entry = fileInput[currFileIndex];
+                resetViewCallback(); // Reset the view state when files are reordered
                 loadFileCallback(entry.type === "default" ? entry.name : entry.file);
                 showFilesList();
                 highlightSelectedFile();
@@ -134,11 +136,8 @@ function enableDragAndDrop() {
             showFilesList();
             highlightSelectedFile();
             const entry = fileInput[currFileIndex];
-            if (entry.type === "default") {
-                loadFileCallback(entry.name);
-            } else if (entry.type === "uploaded") {
-                loadFileCallback(entry.file);
-            }
+            resetViewCallback(); // Reset the view state when files are reordered
+            loadFileCallback(entry.type === "default" ? entry.name : entry.file);
             draggingItem = null;
         });
     });
@@ -168,18 +167,10 @@ function getDragAfterElement(container, y) {
 function removeFile(index) {
     fileInput.splice(index, 1);
     if (index === currFileIndex) {
-        nextLineBtn.disabled = true;
-        prevLineBtn.disabled = true;
-        stepInBtn.disabled = true;
-        stepOutBtn.disabled = true;
-        prevPageBtn.disabled = true;
-        nextPageBtn.disabled = true;
         if (fileInput.length > 0) {
-            numTimes = -1;
-            text = null;
-            textDiv.innerHTML = "";
             const newIndex = Math.min(currFileIndex, fileInput.length - 1);
             currFileIndex = newIndex;
+            resetViewCallback(); // Reset the view state when a file is removed
             showFilesList();
             highlightSelectedFile();
             const entry = fileInput[currFileIndex];
@@ -234,13 +225,11 @@ function setupFileUpload() {
 function loadFileByIndex(index) {
     const entry = fileInput[index];
     currFileIndex = index;
-    if (entry.type === "default") {
-        loadFileCallback(entry.name);
-    } else if (entry.type === "uploaded") {
-        loadFileCallback(entry.file);
-    }
-    console.log(`Loading file: ${entry.name}`);
+    resetViewCallback(); // Reset the view state when a new file is selected
+    loadFileCallback(entry.type === "default" ? entry.name : entry.file);
     highlightSelectedFile();
+    console.log(`Loading file: ${entry.name}`);
+    
 }
 
 export function highlightSelectedFile() {
