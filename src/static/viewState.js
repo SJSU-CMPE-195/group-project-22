@@ -11,6 +11,22 @@ export const viewState = {
     mode: "empty"
 };
 
+export const fileStates = [];
+
+export function initFileStates(fileInput) {
+    fileStates.length = 0;
+    for (let i = 0; i < fileInput.length; i++) {
+        fileStates.push({
+            pdf: null,
+            text: null,
+            page: 1,
+            line: -1,
+            scroll: 0,
+            pdfVisible: true
+        });
+    }
+}
+
 export function updateViewState(newState) {
     Object.assign(viewState, newState);
 }

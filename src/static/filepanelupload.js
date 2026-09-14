@@ -1,4 +1,6 @@
+import { fileStates, initFileStates } from "./viewState.js";
 
+let draggingItem = null;
 export let resetViewCallback = null;
 export function registerResetViewCallback(callback) {
     resetViewCallback = callback;
@@ -8,11 +10,18 @@ export function registerLoadFileCallback(callback) {
     loadFileCallback = callback;
 }
 export let currFileIndex = 0; // Initialize currFileIndex to 0
-
+export function setCurrFileIndex(value) {
+    currFileIndex = value;
+}
 const filesPanel = document.getElementById("fileUploadPanel");
 const openUploadBtn = document.getElementById("openUploadBtn");
 const defaultFiles = ["StanfordPaper1.pdf", "ConstitutionWords.pdf", "constitution.pdf", "holmes.pdf"];
-export let fileInput = defaultFiles.map(name => ({id: crypto.randomUUID(), type: "default", name })); // Initialize with default files
+export let fileInput = defaultFiles.map(name => ({
+    id: crypto.randomUUID(),
+    type: "default",
+    name
+})); // Initialize with default files
+initFileStates(fileInput);
 
 function openUpload() {
     filesPanel.classList.add("open");
@@ -40,7 +49,10 @@ function initToggle() {
     document.getElementById("closeUploadBtn").addEventListener("click", closeUpload);
 
     setupFileUpload();
+    setupUploadResize();
+    setupZIndex();
     showFilesList();
+    setupListEvents();
 }
 
 function showFilesList() {
@@ -50,7 +62,6 @@ function showFilesList() {
         const item = document.createElement("div");
         item.className = "file-item";
         item.draggable = true;
-        item.dataset.index = index;
         item.dataset.id = file.id;
         item.innerHTML = `
         <span class="drag-handle">☰</span>
@@ -58,138 +69,135 @@ function showFilesList() {
         <span class="file-name" title="${file.name}">
             ${file.name}
         </span>
-        <input type="checkbox" class="file-checkbox" data-index="${index}" checked>
-        <button class="move-up-btn" data-index="${index}">▲</button>
-        <button class="move-down-btn" data-index="${index}">▼</button>
-        <button class="remove-btn" data-index="${index}">✖</button>`;
+        <input type="checkbox" class="file-checkbox" data-id="${file.id}" checked>
+        <button class="move-up-btn" data-id="${file.id}">▲</button>
+        <button class="move-down-btn" data-id="${file.id}">▼</button>
+        <button class="remove-btn" data-id="${file.id}">✖</button>`;
         list.appendChild(item);
-        item.addEventListener("click", (e) => {
-            if (
-                e.target.classList.contains("move-up-btn") ||
-                e.target.classList.contains("move-down-btn") ||
-                e.target.classList.contains("remove-btn") ||
-                e.target.classList.contains("file-checkbox")
-            ) {
-                return; // Ignore clicks on buttons and checkboxes
-            }
-
-            loadFileByIndex(index);
-        });
     });
-
-    document.querySelectorAll(".move-up-btn").forEach(btn => {
-        btn.onclick = () => {
-            const index = parseInt(btn.getAttribute("data-index"));
-            if (index > 0) {
-                [fileInput[index - 1], fileInput[index]] = [fileInput[index], fileInput[index - 1]];
-                currFileIndex = index - 1; // Update currFileIndex to the new position
-                const entry = fileInput[currFileIndex];
-                resetViewCallback(); // Reset the view state when files are reordered
-                loadFileCallback(entry.type === "default" ? entry.name : entry.file);
-                showFilesList();
-                highlightSelectedFile();
-            }
-        };
-    });
-
-    document.querySelectorAll(".move-down-btn").forEach(btn => {
-        btn.onclick = () => {
-            const index = parseInt(btn.getAttribute("data-index"));
-            if (index < fileInput.length - 1) {
-                [fileInput[index + 1], fileInput[index]] = [fileInput[index], fileInput[index + 1]];
-                currFileIndex = index + 1; // Update currFileIndex to the new position
-                const entry = fileInput[currFileIndex];
-                resetViewCallback(); // Reset the view state when files are reordered
-                loadFileCallback(entry.type === "default" ? entry.name : entry.file);
-                showFilesList();
-                highlightSelectedFile();
-            }
-        }
-    });
-
-    document.querySelectorAll(".remove-btn").forEach(btn => {
-        btn.onclick = () => {
-            const index = parseInt(btn.getAttribute("data-index"));
-            removeFile(index);
-        };
-    });
-    enableDragAndDrop();
+    highlightSelectedFile();
 }
 
-function enableDragAndDrop() {
+function setupListEvents() {
     const list = document.getElementById("filesList");
-    let draggingItem = null;
-    list.querySelectorAll(".file-item").forEach(item => {
-        item.addEventListener("dragstart", () => {
-            draggingItem = item;
-            item.classList.add("dragging");
-        });
-        item.addEventListener("dragend", () => {
-            item.classList.remove("dragging");            
-            const activeId = fileInput[currFileIndex]?.id;
-            const items = [...list.querySelectorAll(".file-item")];
-            fileInput = items.map(item => {
-                const id = item.dataset.id;
-                return fileInput.find(file => file.id === id);
-            });
-            currFileIndex = fileInput.findIndex(file => file.id === activeId);
-            showFilesList();
-            highlightSelectedFile();
-            const entry = fileInput[currFileIndex];
-            resetViewCallback(); // Reset the view state when files are reordered
-            loadFileCallback(entry.type === "default" ? entry.name : entry.file);
-            draggingItem = null;
-        });
+    
+    list.addEventListener("click", (e) => {
+        const item = e.target.closest(".file-item");
+        if (!item) return;
+        const id = item.dataset.id;
+        const index = fileInput.findIndex(f => f.id === id);
+        if (index === -1) return;
+        if (e.target.classList.contains("move-up-btn")) {
+            if (index > 0) {
+                [fileInput[index - 1], fileInput[index]] = [fileInput[index], fileInput[index - 1]];
+                [fileStates[index - 1], fileStates[index]] = [fileStates[index], fileStates[index - 1]];
+                currFileIndex = index - 1;
+                showFilesList();
+                loadFileByIndex(currFileIndex);
+            }
+            return;
+        }
+        if (e.target.classList.contains("move-down-btn")) {
+            if (index < fileInput.length - 1) {
+                [fileInput[index + 1], fileInput[index]] =
+                    [fileInput[index], fileInput[index + 1]];
+
+                [fileStates[index + 1], fileStates[index]] =
+                    [fileStates[index], fileStates[index + 1]];
+
+                currFileIndex = index + 1;
+                showFilesList();
+                loadFileByIndex(currFileIndex);
+            }
+            return;
+        }
+        if (e.target.classList.contains("remove-btn")) {
+            removeFile(id);
+            return;
+        }
+        if (e.target.classList.contains("file-checkbox")) {
+            // Not implemented, maybe for enable/disable files that can be step in/out into
+            // Might remove if can't think of good use case
+            return;
+        }
+        loadFileByIndex(index);
     });
+    list.addEventListener("dragstart", (e) => {
+        const item = e.target.closest(".file-item");
+        if (!item) return;
+        draggingItem = item;
+        item.classList.add("dragging");
+    });
+
+    list.addEventListener("dragend", (e) => {
+        if (!draggingItem) return;
+        draggingItem.classList.remove("dragging");
+
+        const activeId = fileInput[currFileIndex]?.id;
+        const items = [...list.querySelectorAll(".file-item")];
+        const newIndex = items.findIndex(i => i.dataset.id === draggingItem.dataset.id);
+        const oldIndex = fileInput.findIndex(f => f.id === draggingItem.dataset.id);
+        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
+            draggingItem = null;
+            return;
+        }
+        const [movedFile] = fileInput.splice(oldIndex, 1);
+        fileInput.splice(newIndex, 0 , movedFile);
+        const [movedState] = fileStates.splice(oldIndex, 1);
+        fileStates.splice(newIndex, 0, movedState);
+        currFileIndex = fileInput.findIndex(f => f.id === activeId);
+
+        showFilesList();
+        loadFileByIndex(currFileIndex);
+
+        draggingItem = null;
+    });
+
     list.addEventListener("dragover", (e) => {
         e.preventDefault();
         const afterElement = getDragAfterElement(list, e.clientY);
-        if (!draggingItem) {
-            return;
-        }
+
+        if (!draggingItem) return;
+
         if (afterElement == null) {
             list.appendChild(draggingItem);
         } else {
-                list.insertBefore(draggingItem, afterElement);
+            list.insertBefore(draggingItem, afterElement);
         }
     });
 }
 
 function getDragAfterElement(container, y) {
-    const items = [...container.querySelectorAll(".file-item:not(.dragging)")];
-    return items.find
-        (item => {
-            const box = item.getBoundingClientRect();
-            return y < box.top + box.height / 2;
-        });
+    const draggableElements = [...container.querySelectorAll(".file-item:not(.dragging)")];
+
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+
+        if (offset < 0 && offset > closest.offset) {
+            return { offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-function removeFile(index) {
+function removeFile(id) {
+    const index = fileInput.findIndex(f => f.id === id);
+    if (index === -1) return;
     fileInput.splice(index, 1);
-    if (index === currFileIndex) {
-        if (fileInput.length > 0) {
-            const newIndex = Math.min(currFileIndex, fileInput.length - 1);
-            currFileIndex = newIndex;
-            resetViewCallback(); // Reset the view state when a file is removed
-            showFilesList();
-            highlightSelectedFile();
-            const entry = fileInput[currFileIndex];
-            loadFileCallback(entry.type === "default" ? entry.name : entry.file);
-        } else {
-            currFileIndex = 0;
-            showFilesList();
-            clearViewer();
-        }
-    }
-    else if (index < currFileIndex) {
-        currFileIndex--;
+    fileStates.splice(index, 1);
+    if (fileInput.length === 0) {
+        currFileIndex = 0;
         showFilesList();
-        highlightSelectedFile();
+        clearViewer();
+        return;
     }
-    else {
-        showFilesList();
-        highlightSelectedFile();
+    if (index <= currFileIndex) {
+        currFileIndex = Math.max(0, currFileIndex - 1);
     }
+    showFilesList();
+    loadFileByIndex(currFileIndex);
 }
 
 function clearViewer() {
@@ -208,7 +216,23 @@ function handleFileSelect(event) {
     event.preventDefault();
     const files = event.dataTransfer ? event.dataTransfer.files : event.target.files;
     for (let i = 0; i < files.length; i++) {
-        fileInput.push({id: crypto.randomUUID(), type: "uploaded", name: files[i].name, file: files[i] });
+        const id = crypto.randomUUID();
+        const file = files[i];
+        fileInput.push({
+            id,
+            type: "uploaded",
+            name: files[i].name,
+            file,
+        });
+        fileStates.push({
+            id,
+            pdf: null,
+            text: null,
+            page: -1,
+            line: -1,
+            scroll: 0,
+            pdfVisible: true
+        });
     }
     showFilesList();
 }
@@ -224,12 +248,33 @@ function setupFileUpload() {
 
 function loadFileByIndex(index) {
     const entry = fileInput[index];
+    if (!entry) return;
+    if (entry.file instanceof File && entry.type !== "uploaded") {
+        entry.type = "uploaded";
+    }
     currFileIndex = index;
-    resetViewCallback(); // Reset the view state when a new file is selected
-    loadFileCallback(entry.type === "default" ? entry.name : entry.file);
+    if (!fileStates[index]) {
+        fileStates[index] = {
+            id: entry.id,
+            pdf: null,
+            text: null,
+            page: 1,
+            line: -1,
+            scroll: 0,
+            pdfVisible: true
+        };
+    }
+
+    if (fileStates[index].page == null || fileStates[index].page < 1) {
+        fileStates[index].page = 1;
+    }
+    if (typeof resetViewCallback === "function") {
+        resetViewCallback(); // Reset the view state when a new file is selected
+    }
+    loadFileCallback(entry);
     highlightSelectedFile();
     console.log(`Loading file: ${entry.name}`);
-    
+
 }
 
 export function highlightSelectedFile() {
@@ -242,10 +287,6 @@ export function highlightSelectedFile() {
             item.classList.remove("selected");
         }
     });
-}
-
-export function setCurrFileIndex(index) {
-    currFileIndex = index;
 }
 
 function setupUploadResize() {
@@ -295,7 +336,4 @@ function setupZIndex() {
 }
 
 initToggle();
-setupUploadResize();
-setupZIndex();
-
 openUploadBtn.addEventListener("click", openUpload);

@@ -636,3 +636,25 @@ button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+#jumpBtn {
+    border-left: none;
+    padding: 4px 8px;
+    height: 28px;
+    cursor: pointer;
+}
+
+#jumpBtn:hover {
+    background: #0056b3;
+}
+
+#jumpInput {
+    width: 70px;
+    padding: 4px 6px;
+}
+
+.jump-group {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
