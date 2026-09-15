@@ -1,7 +1,17 @@
-from flask import Flask, jsonify, request, render_template, Response, stream_with_context, send_file, send_from_directory
+from flask import (
+    Flask,
+    jsonify,
+    request,
+    render_template,
+    Response,
+    stream_with_context,
+    send_file,
+    send_from_directory,
+)
 from flask_cors import CORS
-import json
 import chromadb
+
+# import json
 import getPython as gP
 import io
 import requests as req
@@ -13,9 +23,12 @@ chromaClient = None
 chromaCollection = None
 # allow requests from multiple origins.
 CORS(app)
-@app.route('/files/<path:filename>')
+
+
+@app.route("/files/<path:filename>")
 def serve_file(filename):
-    return send_from_directory('files', filename)
+    return send_from_directory("files", filename)
+
 
 @app.route("/")
 def initial():
@@ -26,13 +39,14 @@ def initial():
         chromaCollection = chromaClient.get_or_create_collection(name="collection")
     return render_template("app.html")
 
-# get the get request/get text from the response. 
+
+# get the get request/get text from the response.
 # create a get request for a webpage, and then generate the pdf.
-@app.route("/getWebpage", methods=['POST'])
+@app.route("/getWebpage", methods=["POST"])
 def getW():
     response = request.get_json()
     list = gP.getPrompt(response)
-   # jsonObj = {"link": list[0], "text": list[1]}
+    # jsonObj = {"link": list[0], "text": list[1]}
     # add this webpages text for future requests.
     """chromaCollection.add (
         ids={json.dumps(response)},
@@ -41,47 +55,53 @@ def getW():
     jsonResult = jsonify({"link": list[0], "text": list[1]})
     return jsonResult
 
-@app.route("/stepIn", methods=["POST"]) 
+
+@app.route("/stepIn", methods=["POST"])
 # store the step in that the user did.
 def stepIn():
-   data = request.get_json()
-   line = data.get("line")
-   fileName = data.get("fileName")
-   res = gP.getRelevantText(line, fileName)
-   #obj = {"text": res[0], "pageNum": res[1]}
-   #print(json.dumps(obj))
-   return jsonify({"text": res[0], "pageNum": res[1]})
-@app.route("/fetch-page", methods=['POST'])
+    data = request.get_json()
+    line = data.get("line")
+    fileName = data.get("fileName")
+    res = gP.getRelevantText(line, fileName)
+    # obj = {"text": res[0], "pageNum": res[1]}
+    # print(json.dumps(obj))
+    return jsonify({"text": res[0], "pageNum": res[1]})
+
+
+@app.route("/fetch-page", methods=["POST"])
 def fetch_page():
     data = request.get_json()
-    url = data.get('url', '').strip()
+    url = data.get("url", "").strip()
     if not url:
-        return jsonify({'error': 'No URL provided'}), 400
+        return jsonify({"error": "No URL provided"}), 400
     try:
-        headers = {'User-Agent': 'Mozilla/5.0'}
+        headers = {"User-Agent": "Mozilla/5.0"}
         resp = req.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        
-        for tag in soup(['script', 'style', 'nav', 'footer']):
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        for tag in soup(["script", "style", "nav", "footer"]):
             tag.decompose()
-        text = soup.get_text(separator='\n').strip()
+        text = soup.get_text(separator="\n").strip()
 
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font('Arial', size=11)
+        pdf.set_font("Arial", size=11)
         text = text.encode("latin-1", "ignore").decode("latin-1")
         pdf.multi_cell(0, 7, text)
 
         raw = pdf.output(dest="S")
-        pdf_bytes = bytes(raw) if isinstance(raw, (bytearray, bytes)) else raw.encode("latin-1")
+        pdf_bytes = (
+            bytes(raw) if isinstance(raw, (bytearray, bytes)) else raw.encode("latin-1")
+        )
         return send_file(
             io.BytesIO(bytes(pdf_bytes)),
-            mimetype='application/pdf',
+            mimetype="application/pdf",
             as_attachment=True,
-            download_name='fetched-page.pdf'
+            download_name="fetched-page.pdf",
         )
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/chatMessage", methods=["POST"])
 def chat_message():
@@ -97,11 +117,11 @@ def chat_message():
                     yield content
 
         return Response(
-            stream_with_context(generate()),
-            content_type="text/plain; charset=utf-8"
+            stream_with_context(generate()), content_type="text/plain; charset=utf-8"
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
