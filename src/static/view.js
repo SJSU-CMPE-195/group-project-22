@@ -1,288 +1,283 @@
 //Most of the setup code is from the setup code from helloWorld.html from the pdf.js library
 // Import the pdjsLib module from the library (this is the only import that is working).
 import * as pdfjsLib from 'https://mozilla.github.io/pdf.js/build/pdf.mjs';
-     // get the worker code as well
-     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
-     /* setting our pdf url
-     const url = "/static/StanfordPaper1.pdf"
+// get the worker code as well
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
+import { fileInput, currFileIndex, registerLoadFileCallback, highlightSelectedFile, setCurrFileIndex, registerResetViewCallback } from "./filepanelupload.js";
+registerLoadFileCallback(loadFile); // Register the loadFile function as a callback
+registerResetViewCallback(resetView); // Register the resetViewState function as a callback
 
-     // getting the document object
-     const doc = pdfjsLib.getDocument(url);
-     const pdf = await doc.promise;
-     console.log(pdf);
-
-     // getting the page we want.
-     var num = 1;
-     var page = await pdf.getPage(num);
-
-     // Setting the scale and the "viewport" property
-     // Increase scale to make the canvas bigger.
-     const scale = 1;
-     const viewport = page.getViewport({scale});
-
-     // get our canvas properties.
-     const canvas = document.getElementById("pdf");
-     const context = canvas.getContext("2d");
-
-     // Get the viewport width and height to canvas.
-     canvas.width = Math.floor(viewport.width);
-     canvas.height = Math.floor(viewport.height);
-
-     // Pass in the canvas context and viewport
-     const renderContext = {
-        canvasContext: context,
-        viewport,
-     }
-
-     // this will actually put the page into the canvas.
-     page.render(renderContext);
-
-    var text = await page.getTextContent();
-     */
- //This is the end of the setup code.   
-let pdf, page, text;
-let num = 1;
-let numTimes = -1;
+import { viewState, updateViewState, resetViewState as resetGlobalViewState, updateButtons, fileStates } from "./viewState.js";
 const scale = 1;
 const canvas = document.getElementById("pdf");
 const context = canvas.getContext("2d");
-
-
-let nextLineBtn =  document.getElementById("NextLine");
+const pdfContainer = document.querySelector(".viewer-left");
+let nextLineBtn = document.getElementById("NextLine");
 let nextPageBtn = document.getElementById("nextPage");
 var textDiv = document.getElementById("textDiv");
-let fileOrder = [];
-let currFileIndex = 0;
 var stepInText;
-
-export function setFileOrder(inputStr) {
-    fileOrder = inputStr.split(",").map(str => str.trim());
-
-}
-
-export function setCurrFile(fileName) {
-    currFileIndex = fileOrder.indexOf(fileName);
-}
 
 document.getElementById("stepIn").addEventListener("click", stepIn);
 document.getElementById("stepOut").addEventListener("click", stepOut);
-export async function stepIn(){
-    var stepInChanged = 0
-    if (numTimes >= 0) {
-        stepInText = textDiv.childNodes[numTimes].innerText;
-        stepInChanged = 1
+export async function stepIn() {
+    const prevLine = viewState.numTimes;
+    if (currFileIndex < fileInput.length - 1) {
+        const nextIndex = currFileIndex + 1;
+        setCurrFileIndex(nextIndex);
+        const nextFile = fileInput[nextIndex];
+        if (!nextFile) {
+            console.error("No file at index", nextIndex);
+            return;
+        }
+        await loadFile(nextFile);
+        highlightSelectedFile();
+        const response = await fetch("/stepIn", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                line: prevLine,
+                fileName: fileInput[currFileIndex].name
+            })
+        });
+        const resultObj = await response.json();
+        addText(resultObj.text);
+        fileStates[currFileIndex].line = 0;
+        fileStates[currFileIndex].scroll = 0;
+        await navToPage(resultObj.pageNum, {
+            restoreHighlight: false,
+            resetLine: true
+        });
+        highlightLine(0);
     }
-    if (currFileIndex < fileOrder.length - 1) {
-        currFileIndex++;
-         await loadFile(fileOrder[currFileIndex]);
-         if(stepInChanged == 1) {
-          await getRelevantSection(stepInText, fileOrder[currFileIndex]);
-         }
-         else {
-            alert("No line was selected from the previous file")
-         }
-    }
-    // When out of files, request a webpage.
-    else {
-         await getWebPage();
-    }
+    updateButtons();
 }
-async function getRelevantSection(stepLine, file) {
-     var obj = {line: stepLine, fileName: file}
-     const response = await fetch("/stepIn", {
-      method: "POST",
-      headers: {
-         "Content-Type": "application/json",
-      },
-      body: JSON.stringify(obj),
-    });
-    var res = await response.json()
-    var string = JSON.parse(res);
-     alert("Stepped in with: " + stepLine + "Relevant Text from this file: " + file + "\n" + string)
-    // get the page.
-    // highlight any that start with, what we have and end with
-    var arr = string.trim().split("\n");
-    for(let i = 0; i < arr.length; i++) {
-        if(arr[i].charAt(arr[i].length -1) == ' ') {
-             arr[i] = arr[i].substring(0, arr[i].length-1);
-             console.log("String: " + arr[i]);
-        }
-    }
-    var fileName = fileOrder[currFileIndex];
-    var ind = 1;
-    var jIn = 0;
-    var newPage = page;
-    var count = 0;
-    var textFound = false;
-    var newPageText = text;
-       while(jIn < arr.length && ind <= pdf.numPages) {
-        for(let i  =0; i < newPageText.items.length; i++) {
-             if(newPageText.items[i].str.includes(arr[jIn])) {
-                console.log("found: " + newPageText.items[i].str);
-                page = newPage;
-                text = newPageText;
-                numTimes = -1;
-                num = ind;
-                addText(text);
-                for(let i = 0; i < textDiv.childNodes.length; i++) {
-                    console.log("textDiv:" + textDiv.childNodes[i].innerText);
-                    if(textDiv.childNodes[i].innerText.includes(arr[jIn])) {
-                         console.log("Highlighted!")
-                         textDiv.childNodes[i].style.backgroundColor = "lightgrey"
-                         jIn += 1;
-                    }
-                    if(jIn >= arr.length) {
-                        console.log("found");
-                        break;
-                    }
-                }
-                count += 1;
-                console.log(count);
-                const viewport = page.getViewport({scale});
-                page.render({ canvasContext: context, viewport});
-             }
-        }
-        ind = ind + 1;
-        if( ind <= pdf.numPages) {
-            newPage = await pdf.getPage(ind)
-            newPageText = await newPage.getTextContent();
-        }
-    }
 
- 
-}
 export async function stepOut() {
     if (currFileIndex > 0) {
-        currFileIndex--;
-        await loadFile(fileOrder[currFileIndex]);
+        fileStates[currFileIndex].line = viewState.numTimes;
+        fileStates[currFileIndex].scroll = textDiv.scrollTop;
+        const prevIndex = currFileIndex - 1;
+        setCurrFileIndex(prevIndex);
+        const prevFile = fileInput[prevIndex];
+        await loadFile(prevFile, {restoreHighlight: true});
+        highlightSelectedFile();
     }
+    updateButtons();
 }
 
-async function loadFile(fileName) {
-    const urlName = `/static/${fileName}`;
+async function getPageData(pdf, pageNum) {
+    console.log("DEBUG getPageData: pdf =", pdf);
+    console.log("DEBUG getPageData: pageNum =", pageNum);
+    const page = await pdf.getPage(pageNum);
+    console.log("DEBUG getPageData: page =", page);
+    const text = await page.getTextContent();
+    return { page, text };
+}
+
+async function getRelevantSection(stepLine, file) {
+    const obj = { line: stepLine, fileName: fileInput[currFileIndex].name };
+    const response = await fetch("/stepIn", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(obj),
+    });
+    const res = await response.json()
+    const string = JSON.parse(res);
+    alert("Stepped in with: " + stepLine + "Relevant Text from this file: " + file + "\n" + string)
+    // get the page.
+    // highlight any that start with, what we have and end with
+    const arr = string.trim().split("\n");
+    for (let pageNum = 1; pageNum <= viewState.totalPages; pageNum++) {
+        const { text: pageText } = await getPageData(viewState.pdf, pageNum);
+        for (let line of arr) {
+            if (pageText.items.some(item => item.str.trim() === line.trim())) {
+                return pageNum;
+            }
+        }
+    }
+    return null; // No relevant page found
+}
+
+export async function loadFile(input, {restoreHighlight = false } = {}) {
+    if (!input) return;
+    let params = {};
+
+    if (input.type === "default") {
+        params.url = `/files/default/${input.name}`;
+    }
+    else if (input.type === "uploaded" && input.file instanceof File) {
+        params.url = URL.createObjectURL(input.file);
+    } else {
+        console.error("Unknown entry type or missing file:", input);
+        return;
+    }
 
     // loading document
-    const loadingDoc = pdfjsLib.getDocument({url: urlName});
-    pdf = await loadingDoc.promise;
-    num = 1;
-    numTimes = -1;
-    page = await pdf.getPage(num);
-    text = await page.getTextContent();
-    addText(text);
-    const firstLine = textDiv.childNodes[0];
-    if (firstLine) {
-        firstLine.scrollIntoView({behavior: "smooth", block: "center"});
+    const loadingDoc = pdfjsLib.getDocument(params);
+    const loadedPdf = await loadingDoc.promise;
+    const state = fileStates[currFileIndex];
+    if (state.page == null || state.page < 1){
+        state.page = 1;
     }
-    const viewport = page.getViewport({scale});
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    page.render({ canvasContext: context, viewport});
+    if (!restoreHighlight && state.pdf && state.pdf !== loadedPdf) {
+        state.page = 1;
+        state.line = 0;
+        state.scroll = 0;
+    }
+    state.pdf = loadedPdf;
+    updateViewState({
+        pdf: loadedPdf,
+        totalPages: loadedPdf.numPages,
+        mode: "viewing"
+    });
 
+    if (state.text) {
+        addText(state.text);
+    }
+    await navToPage(state.page, {restoreHighlight})
+
+    pdfContainer.style.display = state.pdfVisible ? "block" : "none";
 }
 
+function updatePageDisplay() {
+    const display = document.getElementById("pageDisplay");
+    display.textContent = `Page ${viewState.currentPage} of ${viewState.totalPages}`;
+}
 
+export async function renderPage(pageNum, restoreHighlight = false) {
+    const pdf = viewState.pdf;
+    const { page, text: extractedText } = await getPageData(pdf, pageNum);
+    updateViewState({
+        page: page,
+        text: extractedText,
+        currentPage: pageNum
+    });
+    const state = fileStates[currFileIndex];
+    state.page = pageNum;
+    state.text = extractedText;
+    updatePageDisplay();
+    addText(extractedText);
 
-nextLineBtn.addEventListener("click", function() {
-    if (!text || !text.items || text.items.length === 0) {
-        return; // No text to navigate through
+    const viewport = page.getViewport({ scale });
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    page.render({ canvasContext: context, viewport });
+    updateButtons();
+    if (state.line >= 0 && restoreHighlight) {
+        highlightLine(state.line, true);
     }
-    //this prints the line
-    if(numTimes < textDiv.childNodes.length - 1){
-       console.log(numTimes);
-       if(numTimes >= 0) {
-          textDiv.childNodes[numTimes].style.backgroundColor = "transparent";
-       }
-       numTimes++;
-    textDiv.childNodes[numTimes].style.backgroundColor = "yellow";
-    textDiv.childNodes[numTimes].scrollIntoView({behavior: "smooth", block: "center"});
-    }
+}
 
+function highlightLine(lineIndex, silent = false) {
+    const lines = textDiv.childNodes;
+    if (lineIndex < 0 || lineIndex >= lines.length) return;
+    if (viewState.numTimes >= 0 && viewState.numTimes < lines.length) {
+        lines[viewState.numTimes].style.backgroundColor = "transparent";
+    }
+    lines[lineIndex].style.backgroundColor = "yellow";
+    updateViewState({ numTimes: lineIndex });
+    if (!silent) {
+        lines[lineIndex].scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+}
+
+textDiv.addEventListener("scroll", () => {
+    fileStates[currFileIndex].scroll = textDiv.scrollTop;
+});
+
+function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+nextLineBtn.addEventListener("click", () => {
+    const lines = textDiv.childNodes;
+    if (viewState.numTimes < lines.length - 1) {
+        const newIndex = viewState.numTimes + 1;
+        highlightLine(newIndex);
+        fileStates[currFileIndex].line = newIndex;
+        updateButtons();
+    }
 });
 
 let prevLineBtn = document.getElementById("prevLine");
-prevLineBtn.addEventListener("click", function() {
-    if (!text || !text.items || text.items.length === 0) {
-        return; // No text to navigate through
-    }
-    if(numTimes > 0){
-        textDiv.childNodes[numTimes].style.backgroundColor = "transparent";
-        numTimes--;
-        textDiv.childNodes[numTimes].style.backgroundColor = "yellow";
-        textDiv.childNodes[numTimes].scrollIntoView({behavior: "smooth", block: "center"});
+prevLineBtn.addEventListener("click", () => {
+    if (viewState.numTimes > 0) {
+        const newIndex = viewState.numTimes - 1;
+        highlightLine(newIndex);
+        fileStates[currFileIndex].line = newIndex;
+        updateButtons();
     }
 });
 
 let prevPageBtn = document.getElementById("prevPage");
-prevPageBtn.addEventListener("click", function() {
+prevPageBtn.addEventListener("click", function () {
     getPrevPage();
 });
 
-nextPageBtn.addEventListener("click", function() {
+nextPageBtn.addEventListener("click", function () {
     getNextPage();
 });
 
 async function getPrevPage() {
-    if (num > 1) {
-        num -= 1;
-        page = await pdf.getPage(num);
-        text = await page.getTextContent();
-        numTimes = -1;
-        addText(text);
-        const viewport = page.getViewport({scale});
-        page.render({ canvasContext: context, viewport});
+    if (viewState.currentPage > 1) {
+        navToPage(viewState.currentPage - 1, { restoreHighlight: false });
+    }
+}
+
+async function getNextPage() {
+    if (viewState.currentPage < viewState.totalPages) {
+        navToPage(viewState.currentPage + 1, { restoreHighlight: false });
     }
 }
 
 export function getCurrentPageText() {
-    if (!text || !text.items) return "";
+    if (!viewState.text || !viewState.text.items) return "";
 
-    return text.items
+    return viewState.text.items
         .map(item => item.str?.trim() || "")
         .filter(str => str.length > 0)
         .join("\n");
 }
 
-
-async function getNextPage() {
-    // if at last page, do nothing
-    if (num >= pdf.numPages) {
-        return;
-    }
-
-    num += 1;
-    page = await pdf.getPage(num);
-    text = await page.getTextContent();
-    numTimes = -1;
-    addText(text);
-    const viewport = page.getViewport({scale});
-    page.render({ canvasContext: context, viewport});
+export function resetView() {
+    resetGlobalViewState();
+    textDiv.innerHTML = "";
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    updateButtons();
 }
-async function getWebPage() {
+
+async function getWebPage(url) {
     // add a branch to check if there are no stepins.
     const response = await fetch("/getWebpage", {
-      method: "POST",
-      headers: {
-         "Content-Type": "application/json",
-      },
-      body: JSON.stringify(stepInText),
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url }),
 
     });
-    var result = await response.json();
-    var resultObj = JSON.parse(result);
+    const resultObj = await response.json();
     // generate the pdf and load the file.
-    alert("link:" + resultObj.link + "text: " + resultObj.text)
-
+    // alert("link:" + resultObj.link + "text: " + resultObj.text)
+    addText(resultObj.text);
 }
 
 function addText(text) {
     // clears the text div
     textDiv.innerHTML = "";
-    for(let item of text.items) {
+    for (let item of text.items) {
         const str = item.str.trim();
         // skips empty lines 
-        if (str.length == 0){
+        if (str.length == 0) {
             continue;
-         }
+        }
         const p = document.createElement("p");
         p.textContent = str;
         // Now add to div
@@ -291,21 +286,61 @@ function addText(text) {
     }
 }
 
-const toggleBtn = document.getElementById("togglePdf");
-const pdfContainer = document.getElementById("pdf");
-const viewer = document.querySelector(".viewer-container");
+async function navToPage(pageNum, { restoreHighlight = false, resetLine = false } = {}) {
+    const state = fileStates[currFileIndex];
+    if (resetLine) {
+        state.line = 0;
+        state.scroll = 0;
+    }
+    if (!restoreHighlight) {
+        state.line = -1;
+        state.scroll = 0;
+        updateViewState({numTimes: -1});
+    }
+    state.page = pageNum;
+    await renderPage(pageNum, restoreHighlight);
+    if (restoreHighlight) {
+        requestAnimationFrame(() => {
+            textDiv.scrollTop = state.scroll;
+        });
+    }
+}
 
-toggleBtn.addEventListener("click", function() {
-    if (pdfContainer.style.display === "none") {
-        pdfContainer.style.display = "block";
-        viewer.classList.remove("single-column");
-    } else {
-        pdfContainer.style.display = "none";
-        viewer.classList.add("single-column");
+document.getElementById("jumpBtn").addEventListener("click", function () {
+    let target = parseInt(document.getElementById("jumpInput").value);
+    if (isNaN(target)) return;
+    if (target < 1) target = 1;
+    if (target > viewState.totalPages) target = viewState.totalPages;
+    navToPage(target, {restoreHighlight: false});
+});
+
+jumpInput.addEventListener("input", () => {
+    let value = parseInt(jumpInput.value);
+    if (isNaN(value)) return;
+    if (value < 1) value = 1;
+    if (value > viewState.totalPages) value = viewState.totalPages;
+    jumpInput.value = value;
+});
+
+jumpInput.addEventListener("keydown", (e) => {
+    const allowed = [
+        "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"
+    ];
+    if (allowed.includes(e.key)) return;
+    if (!/^\d$/.test(e.key)) {
+        e.preventDefault();
     }
 });
 
-setFileOrder("StanfordPaper1.pdf, ConstitutionWords.pdf, constitution.pdf, holmes.pdf");
-setCurrFile("StanfordPaper1.pdf");
-await loadFile("StanfordPaper1.pdf");
-// frin
+document.addEventListener("DOMContentLoaded", () => {
+    const toggleBtn = document.getElementById("togglePdf");
+    const pdfContainer = document.querySelector(".viewer-left");
+    const viewer = document.querySelector(".viewer-container");
+
+    toggleBtn.addEventListener("click", function () {
+        const hidden = pdfContainer.style.display === "none";
+        pdfContainer.style.display = hidden ? "block" : "none";
+        viewer.classList.toggle("single-column", !hidden);
+    });
+    loadFile(fileInput[currFileIndex]);
+});

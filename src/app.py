@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template, Response, stream_with_context, send_file
+from flask import Flask, jsonify, request, render_template, Response, stream_with_context, send_file, send_from_directory
 from flask_cors import CORS
 import json
 import chromadb
@@ -13,6 +13,9 @@ chromaClient = None
 chromaCollection = None
 # allow requests from multiple origins.
 CORS(app)
+@app.route('/files/<path:filename>')
+def serve_file(filename):
+    return send_from_directory('files', filename)
 
 @app.route("/")
 def initial():
@@ -29,14 +32,13 @@ def initial():
 def getW():
     response = request.get_json()
     list = gP.getPrompt(response)
-    jsonObj = {"link": list[0], "text": list[1]}
-    jsonResult = jsonify(json.dumps(jsonObj))
+   # jsonObj = {"link": list[0], "text": list[1]}
     # add this webpages text for future requests.
     """chromaCollection.add (
         ids={json.dumps(response)},
         documents={json.dumps(jsonObj)},
     )"""
-    jsonResult = jsonify(json.dumps(jsonObj))
+    jsonResult = jsonify({"link": list[0], "text": list[1]})
     return jsonResult
 
 @app.route("/stepIn", methods=["POST"]) 
@@ -48,7 +50,7 @@ def stepIn():
    res = gP.getRelevantText(line, fileName)
    #obj = {"text": res[0], "pageNum": res[1]}
    #print(json.dumps(obj))
-   return jsonify(json.dumps(res))
+   return jsonify({"text": res[0], "pageNum": res[1]})
 @app.route("/fetch-page", methods=['POST'])
 def fetch_page():
     data = request.get_json()
@@ -70,7 +72,8 @@ def fetch_page():
         text = text.encode("latin-1", "ignore").decode("latin-1")
         pdf.multi_cell(0, 7, text)
 
-        pdf_bytes = pdf.output(dest="S").encode("latin-1")
+        raw = pdf.output(dest="S")
+        pdf_bytes = bytes(raw) if isinstance(raw, (bytearray, bytes)) else raw.encode("latin-1")
         return send_file(
             io.BytesIO(bytes(pdf_bytes)),
             mimetype='application/pdf',
