@@ -21,6 +21,7 @@ document.getElementById("stepIn").addEventListener("click", stepIn);
 document.getElementById("stepOut").addEventListener("click", stepOut);
 export async function stepIn() {
     const prevLine = viewState.numTimes;
+    var stepInLine= textDiv.childNodes[prevLine].innerText
     if (currFileIndex < fileInput.length - 1) {
         const nextIndex = currFileIndex + 1;
         setCurrFileIndex(nextIndex);
@@ -35,11 +36,12 @@ export async function stepIn() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                line: prevLine,
+                line: stepInLine,
                 fileName: fileInput[currFileIndex].name
             })
         });
         const resultObj = await response.json();
+        console.log(resultObj.text)
         addText(resultObj.text);
         fileStates[currFileIndex].line = 0;
         fileStates[currFileIndex].scroll = 0;

@@ -66,23 +66,21 @@ def getChatResponse(chatHistory):
 
 def getRelevantText(line, fileName):
     print("Sending step In prompt")
-    document = PdfReader("./static/" + fileName)
+    document = PdfReader("./files/default/" + fileName)
     length = len(document.pages)
     if len(document.pages) > 20:
         length = 20
     text = ""
     for i in range(length):
         text += document.pages[i].extract_text()
-    # textarr = text.split("\n")
+    #textarr = text.split("\n")
+    promptString = "From the following text: (MUST ANSWER WITH A SECTION FROM THIS TEXT ONLY) " + text + "Give me ONLY the most relevant text (ANSWER WITH JUST THIS TEXT) related to the following." + line
     response: ChatResponse = chat(
         model="gemma4:31b-cloud",
         messages=[
             {
-                "role": "user",
-                "content": "From the following text: (MUST ANSWER WITH A SECTION FROM THIS TEXT ONLY) "
-                + text
-                + "Give me ONLY the most relevant text (ANSWER WITH JUST THIS TEXT) related to the following."
-                + line,
+                'role': 'user',
+                'content': promptString
             },
         ],
     )
