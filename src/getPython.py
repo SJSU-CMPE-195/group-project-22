@@ -81,7 +81,7 @@ def getRelevantText(line, fileName):
         return "No extractable text in Pdf.", None, []
     
     response: ChatResponse = chat(
-        model="llama3.1:8b",
+        model="gemma4:31b-cloud",
         messages=[
             {
                 "role": "user",
