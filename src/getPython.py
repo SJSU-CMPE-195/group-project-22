@@ -1,7 +1,7 @@
 from ollama import chat
 from ollama import ChatResponse
 from pypdf import PdfReader
-
+import difflib
 
 # this is for webpage for information
 def getPrompt(line):
@@ -66,30 +66,61 @@ def getChatResponse(chatHistory):
 
 def getRelevantText(line, fileName):
     print("Sending step In prompt")
-    document = PdfReader("./static/" + fileName)
+    document = PdfReader("./files/default/" + fileName)
     length = len(document.pages)
     if len(document.pages) > 20:
         length = 20
     text = ""
     for i in range(length):
-        text += document.pages[i].extract_text()
+        page_text = document.pages[i].extract_text()
+        if page_text:
+            text += page_text + "\n"
     # textarr = text.split("\n")
+    if not text.strip():
+        print("Debug: No extractable text in pdf");
+        return "No extractable text in Pdf.", None, []
+    
     response: ChatResponse = chat(
-        model="gemma4:31b-cloud",
+        model="llama3.1:8b",
         messages=[
             {
                 "role": "user",
-                "content": "From the following text: (MUST ANSWER WITH A SECTION FROM THIS TEXT ONLY) "
+                "content": "From the following text: (MUST ANSWER WITH A SECTION FROM THIS TEXT ONLY, NO PARAPHRASING) "
                 + text
-                + "Give me ONLY the most relevant text (ANSWER WITH JUST THIS TEXT) related to the following."
-                + line,
+                + "Give me ONLY the most relevant text (ANSWER WITH JUST THIS TEXT VERBATIM) related to the following."
+                + str(line),
             },
         ],
     )
     promptRes = response.message.content
+    
     print(promptRes)
+    snippet_lines = [
+        l.strip()
+        for l in promptRes.split("\n")
+        if l.strip()
+    ]
+    for sl in snippet_lines:
+        print(f"SNIPPET: [{sl}]")
 
-    """for i in range(len(document.pages)):
-      if(document.pages[i].extract_text().strip().find(promptRes.strip()) != -1):
-          pageNum = i"""
-    return promptRes
+    for i in range(len(document.pages)):
+        page_text = document.pages[i].extract_text()
+        if not page_text:
+            continue
+        page_lines = [
+            l.strip()
+            for l in page_text.split("\n")
+            if l.strip()
+        ]
+        print(f"\n--- PAGE {i} ---")
+        for pl in page_lines:
+            print(f"PAGE LINE: [{pl}]")
+        for snippet_line in snippet_lines:
+            print(f"COMPARE snippet=[{snippet_line}] WITH PAGE LINE(S)")
+            if snippet_line in page_lines:
+                print(f"\n*** MATCH FOUND ***")
+                print(f"Matched snippet line: [{snippet_line}]")
+                print(f"On page: {i}")
+                return promptRes, i, page_lines
+    print("\n*** NO PAGE MATCH FOUND ***")
+    return promptRes, None, []

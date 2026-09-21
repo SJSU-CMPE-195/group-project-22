@@ -20,7 +20,8 @@ var stepInText;
 document.getElementById("stepIn").addEventListener("click", stepIn);
 document.getElementById("stepOut").addEventListener("click", stepOut);
 export async function stepIn() {
-    const prevLine = viewState.numTimes;
+    fileStates[currFileIndex].originLine = viewState.numTimes;
+    const prevLine = textDiv.childNodes[viewState.numTimes].innerText;
     if (currFileIndex < fileInput.length - 1) {
         const nextIndex = currFileIndex + 1;
         setCurrFileIndex(nextIndex);
@@ -40,38 +41,123 @@ export async function stepIn() {
             })
         });
         const resultObj = await response.json();
-        addText(resultObj.text);
+        if (resultObj.text.toLowerCase().includes("no relevant")) {
+            alert("No relevant text found.");
+            return;
+        }
+        const backendPageText = resultObj.pageText;
+        const correctPage = await findPageByText(backendPageText);
+        if (correctPage === -1) {
+            alert("Relevant text found, but page could not be matched");
+            return;
+        }
+        const relevantLines = resultObj.text
+            .split("\n")
+            .map(l => l.trim())
+            .filter(l => l.length > 0);
         fileStates[currFileIndex].line = 0;
         fileStates[currFileIndex].scroll = 0;
-        await navToPage(resultObj.pageNum, {
+        await navToPage(correctPage, {
             restoreHighlight: false,
             resetLine: true
         });
-        highlightLine(0);
+        alert(
+            "Stepped in with:\n" + prevLine +
+            "\n\nRelevant text from " + fileInput[currFileIndex].name + ":\n\n" +
+            resultObj.text
+        );
+        markRelevantLines(relevantLines);
+        const pageLines = Array.from(textDiv.childNodes).map(n => n.innerText.trim());
+        let matchIndex = -1;
+        const normalizedRel = relevantLines.map(normalize);
+        const normalizedPageLines = pageLines.map(normalize);
+        for (let i = 0; i < normalizedPageLines.length; i++) {
+            for (let j = 0; j < normalizedRel.length; j++){
+                if (normalizedPageLines[i].includes(normalizedRel[j]) ||
+                    normalizedRel[j].includes(normalizedPageLines[i])) 
+                    {
+                    matchIndex = i;
+                    break;  
+                }
+            }
+            if (matchIndex >= 0) break;
+        }
+        if (matchIndex >= 0) {
+            textDiv.childNodes[matchIndex].scrollIntoView({ behavior: "smooth", block: "center" })
+        }
+        else {
+            console.log(" no match found in frontend");
+        }
     }
     updateButtons();
 }
 
 export async function stepOut() {
+    clearRelevantLines();
     if (currFileIndex > 0) {
-        fileStates[currFileIndex].line = viewState.numTimes;
-        fileStates[currFileIndex].scroll = textDiv.scrollTop;
         const prevIndex = currFileIndex - 1;
+        fileStates[prevIndex].line = fileStates[prevIndex].originLine;
+        fileStates[prevIndex].scroll = textDiv.scrollTop;
         setCurrFileIndex(prevIndex);
         const prevFile = fileInput[prevIndex];
-        await loadFile(prevFile, {restoreHighlight: true});
+        await loadFile(prevFile, { restoreHighlight: true });
         highlightSelectedFile();
     }
     updateButtons();
 }
 
 async function getPageData(pdf, pageNum) {
-    console.log("DEBUG getPageData: pdf =", pdf);
-    console.log("DEBUG getPageData: pageNum =", pageNum);
     const page = await pdf.getPage(pageNum);
-    console.log("DEBUG getPageData: page =", page);
     const text = await page.getTextContent();
     return { page, text };
+}
+
+async function findPageByText(backendPageText) {
+    const normalizedBackend = normalize(backendPageText);
+    const pdf = viewState.pdf;
+    const total = pdf.numPages;
+    for (let i = 1; i <= total; i++) {
+        const { text } = await getPageData(pdf, i);
+        const pageText = text.items
+            .map(item => item.str.trim())
+            .filter(str => str.length > 0)
+            .join(" ");
+        const normalizedPage = normalize(pageText);
+        if (normalizedPage.includes(normalizedBackend) ||
+        normalizedBackend.includes(normalizedPage)) {
+            return i;
+        }    
+    }
+    return -1;
+}
+
+function markRelevantLines(lines) {
+    const normalized = lines.map(normalize);
+    const textNodes = textDiv.childNodes;
+    for (let i = 0; i < textNodes.length; i++) {
+        const nodeText = normalize(textNodes[i].innerText);
+        for (let j = 0; j < normalized.length; j++){
+            if (nodeText.includes(normalized[j])||normalized[j].includes(nodeText)) {
+                textNodes[i].classList.add("relevant-line");
+                break;
+            }
+        }
+    }
+}
+
+function clearRelevantLines() {
+    const textNodes = textDiv.childNodes;
+    for (let node of textNodes) {
+        node.classList.remove("relevant-line");
+    }
+}
+
+function normalize(str) {
+    return str
+        .replace(/\s+/g, " ")
+        .replace(/[^\x00-\x7F]/g, "")
+        .trim()
+        .toLowerCase();
 }
 
 async function getRelevantSection(stepLine, file) {
@@ -100,7 +186,7 @@ async function getRelevantSection(stepLine, file) {
     return null; // No relevant page found
 }
 
-export async function loadFile(input, {restoreHighlight = false } = {}) {
+export async function loadFile(input, { restoreHighlight = false } = {}) {
     if (!input) return;
     let params = {};
 
@@ -118,11 +204,10 @@ export async function loadFile(input, {restoreHighlight = false } = {}) {
     const loadingDoc = pdfjsLib.getDocument(params);
     const loadedPdf = await loadingDoc.promise;
     const state = fileStates[currFileIndex];
-    if (state.page == null || state.page < 1){
+    if (state.page == null || state.page < 1) {
         state.page = 1;
     }
     if (!restoreHighlight && state.pdf && state.pdf !== loadedPdf) {
-        state.page = 1;
         state.line = 0;
         state.scroll = 0;
     }
@@ -136,7 +221,7 @@ export async function loadFile(input, {restoreHighlight = false } = {}) {
     if (state.text) {
         addText(state.text);
     }
-    await navToPage(state.page, {restoreHighlight})
+    await navToPage(state.page, { restoreHighlight })
 
     pdfContainer.style.display = state.pdfVisible ? "block" : "none";
 }
@@ -253,25 +338,47 @@ export function resetView() {
     updateButtons();
 }
 
-async function getWebPage(url) {
+document.getElementById("urlContext").addEventListener("click", getWebPage);
+
+async function getWebPage() {
+    const index = viewState.numTimes;
+    const line = textDiv.childNodes[index];
+    if (!line) {
+        alert("No highlighted line.");
+        return;
+    }
+    const lineTrimmed = line.innerText.trim();
+    
     // add a branch to check if there are no stepins.
     const response = await fetch("/getWebpage", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url: lineTrimmed }),
 
     });
     const resultObj = await response.json();
     // generate the pdf and load the file.
-    // alert("link:" + resultObj.link + "text: " + resultObj.text)
-    addText(resultObj.text);
+    alert("link:" + resultObj.link + "text: " + resultObj.text)
+
 }
 
 function addText(text) {
     // clears the text div
     textDiv.innerHTML = "";
+
+    if (typeof text === "string") {
+        const lines = text.split("\n");
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.length === 0) continue;
+            const p = document.createElement("p");
+            p.textContent = trimmed;
+            textDiv.appendChild(p);
+        }
+        return;
+    }
     for (let item of text.items) {
         const str = item.str.trim();
         // skips empty lines 
@@ -295,8 +402,9 @@ async function navToPage(pageNum, { restoreHighlight = false, resetLine = false 
     if (!restoreHighlight) {
         state.line = -1;
         state.scroll = 0;
-        updateViewState({numTimes: -1});
+        updateViewState({ numTimes: -1 });
     }
+    updateViewState({currentPage: pageNum});
     state.page = pageNum;
     await renderPage(pageNum, restoreHighlight);
     if (restoreHighlight) {
@@ -311,7 +419,7 @@ document.getElementById("jumpBtn").addEventListener("click", function () {
     if (isNaN(target)) return;
     if (target < 1) target = 1;
     if (target > viewState.totalPages) target = viewState.totalPages;
-    navToPage(target, {restoreHighlight: false});
+    navToPage(target, { restoreHighlight: false });
 });
 
 jumpInput.addEventListener("input", () => {

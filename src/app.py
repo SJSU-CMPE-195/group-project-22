@@ -44,7 +44,8 @@ def initial():
 # create a get request for a webpage, and then generate the pdf.
 @app.route("/getWebpage", methods=["POST"])
 def getW():
-    response = request.get_json()
+    data = request.get_json()
+    response = data.get("url", "")
     list = gP.getPrompt(response)
     # jsonObj = {"link": list[0], "text": list[1]}
     # add this webpages text for future requests.
@@ -52,6 +53,7 @@ def getW():
         ids={json.dumps(response)},
         documents={json.dumps(jsonObj)},
     )"""
+
     jsonResult = jsonify({"link": list[0], "text": list[1]})
     return jsonResult
 
@@ -62,10 +64,12 @@ def stepIn():
     data = request.get_json()
     line = data.get("line")
     fileName = data.get("fileName")
-    res = gP.getRelevantText(line, fileName)
+    # res = gP.getRelevantText(line, fileName)
+    relevant_text, pageNum, page_lines = gP.getRelevantText(line, fileName)
+    backend_page_text = "\n".join(page_lines)
     # obj = {"text": res[0], "pageNum": res[1]}
     # print(json.dumps(obj))
-    return jsonify({"text": res[0], "pageNum": res[1]})
+    return jsonify({"text": relevant_text, "pageText": backend_page_text})
 
 
 @app.route("/fetch-page", methods=["POST"])

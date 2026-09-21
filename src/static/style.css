@@ -658,3 +658,7 @@ button:disabled {
     align-items: center;
     gap: 0;
 }
+
+.relevant-line {
+    background-color: #d1d1d1;
+}
