@@ -124,4 +124,5 @@ def chat_message():
 
 
 if __name__ == "__main__":
+    gP.ensure_ollama_running()
     app.run(debug=True)

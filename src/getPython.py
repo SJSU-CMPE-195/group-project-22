@@ -1,7 +1,11 @@
 from ollama import chat
 from ollama import ChatResponse
 from pypdf import PdfReader
+import subprocess
+import time
+import httpx
 
+OLLAMA_URL = "http://127.0.0.1:11434"
 
 # this is for webpage for information
 def getPrompt(line):
@@ -53,7 +57,7 @@ def getPrompt(line):
     results.append(textStr)
     return results
 
-
+#chat side bar functionality
 def getChatResponse(chatHistory):
 
     return chat(
@@ -63,6 +67,33 @@ def getChatResponse(chatHistory):
         stream=True,
     )
 
+def ensure_ollama_running():
+    try:
+        httpx.get(f"{OLLAMA_URL}/api/tags", timeout=2)
+        return
+    except httpx.RequestError:
+        print("Ollama is not running. Starting it...")
+
+    subprocess.Popen(
+        ["ollama", "serve"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
+
+    # Give Ollama a few seconds to start
+    for _ in range(10):
+        try:
+            response = httpx.get(f"{OLLAMA_URL}/api/tags", timeout=2)
+            if response.status_code == 200:
+                print("Ollama started successfully.")
+                return
+        except httpx.RequestError:
+            pass
+
+        time.sleep(1)
+
+    raise RuntimeError("Ollama could not be started.")
 
 def getRelevantText(line, fileName):
     print("Sending step In prompt")

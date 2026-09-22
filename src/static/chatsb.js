@@ -43,11 +43,13 @@ document.addEventListener("click", function (e) {
     }
 });
 
+// Clear chat view
 clearChatOption.addEventListener("click", function () {
     messages.innerHTML = "";
     chatOptionsMenu.classList.add("hidden");
 });
 
+//Clear chat history
 clearChatHistoryOption.addEventListener("click", function () {
     chatHistory = [
         { role: "system", content: "You are a helpful assistant." }
