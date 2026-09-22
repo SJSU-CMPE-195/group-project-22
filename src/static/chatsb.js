@@ -31,6 +31,53 @@ let chatHistory = [
     { role: "system", content: "You are a helpful assistant." }
 ];
 
+/* Model selection */
+const modelSelect = document.getElementById("modelSelect");
+
+async function loadModels() {
+    try {
+        const response = await fetch("/api/models");
+
+        if (!response.ok) {
+            throw new Error("Failed to load models");
+        }
+
+        const data = await response.json();
+
+        modelSelect.innerHTML = "";
+
+        if (!data.models || data.models.length === 0) {
+            const option = document.createElement("option");
+            option.textContent = "No models found";
+            option.value = "";
+            modelSelect.appendChild(option);
+            return;
+        }
+
+        data.models.forEach(model => {
+            const option = document.createElement("option");
+
+            option.value = model;
+            option.textContent = model;
+
+            modelSelect.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error("Error loading Ollama models:", error);
+
+        modelSelect.innerHTML = "";
+
+        const option = document.createElement("option");
+        option.textContent = "Ollama unavailable";
+        option.value = "";
+
+        modelSelect.appendChild(option);
+    }
+}
+
+loadModels();
+
 /* Chat options menu */
 chatOptionsBtn.addEventListener("click", function (e) {
     e.stopPropagation();
@@ -61,7 +108,10 @@ clearChatHistoryOption.addEventListener("click", function () {
 async function sendMessage() {
     const text = input.value.trim();
     console.log("chatHistory:", chatHistory);
+
     if (!text) return;
+    
+    console.log("Selected model:", modelSelect.value);
 
     if (text.includes("[Page]")) {
         const currentPageText = getCurrentPageText();
@@ -87,7 +137,8 @@ async function sendMessage() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                chatHistory: chatHistory
+                chatHistory: chatHistory,
+                model: modelSelect.value || "tinyllama:latest"
             })
         });
 

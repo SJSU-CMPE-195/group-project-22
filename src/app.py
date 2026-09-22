@@ -10,6 +10,7 @@ from flask import (
 )
 from flask_cors import CORS
 import chromadb
+import requests
 
 # import json
 import getPython as gP
@@ -108,9 +109,10 @@ def chat_message():
     data = request.get_json()
     try:
         chat_history = data.get("chatHistory", [])
+        model = data.get("model")
 
         def generate():
-            stream = gP.getChatResponse(chat_history)
+            stream = gP.getChatResponse(chat_history, model)
             for chunk in stream:
                 content = chunk.get("message", {}).get("content", "")
                 if content:
@@ -122,6 +124,13 @@ def chat_message():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/models")
+def get_models():
+    models = gP.getOllamaModels()
+
+    return jsonify({
+        "models": models
+    })
 
 if __name__ == "__main__":
     gP.ensure_ollama_running()

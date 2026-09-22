@@ -58,14 +58,35 @@ def getPrompt(line):
     return results
 
 #chat side bar functionality
-def getChatResponse(chatHistory):
+def getChatResponse(chatHistory, model):
 
     return chat(
-        model="tinyllama:latest",
+        model=model,
         messages=chatHistory,
         options={"temperature": 0.7},
         stream=True,
     )
+
+def getOllamaModels():
+
+    try:
+        response = httpx.get(
+            f"{OLLAMA_URL}/api/tags",
+            timeout=5
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return [
+            model["name"]
+            for model in data.get("models", [])
+        ]
+
+    except httpx.HTTPError as e:
+        print(f"Could not get Ollama models: {e}")
+        return []
 
 def ensure_ollama_running():
     try:
