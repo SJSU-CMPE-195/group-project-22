@@ -31,6 +31,30 @@ let chatHistory = [
     { role: "system", content: "You are a helpful assistant." }
 ];
 
+let activeChatController = null;
+
+/* Cancel functionality */
+function setChatThinking(isThinking) {
+    if (isThinking) {
+        sendBtn.textContent = "Cancel";
+        sendBtn.classList.add("cancel");
+        chatOptionsBtn.disabled = true;
+    } else {
+        sendBtn.textContent = "Send";
+        sendBtn.classList.remove("cancel");
+        chatOptionsBtn.disabled = false;
+    }
+}
+
+function cancelChat() {
+    if (activeChatController) {
+        activeChatController.abort();
+        activeChatController = null;
+        chatHistory.pop(); // Remove the last user message since it was not processed
+        setChatThinking(false);
+    }
+}
+
 /* Model selection */
 const modelSelect = document.getElementById("modelSelect");
 
@@ -108,10 +132,9 @@ clearChatHistoryOption.addEventListener("click", function () {
 async function sendMessage() {
     const text = input.value.trim();
     console.log("chatHistory:", chatHistory);
+    console.log("Selected model:", modelSelect.value);
 
     if (!text) return;
-    
-    console.log("Selected model:", modelSelect.value);
 
     if (text.includes("[Page]")) {
         const currentPageText = getCurrentPageText();
@@ -130,12 +153,16 @@ async function sendMessage() {
     const loadingMsg = createMsg("thinking-message", "Thinking");
     messages.prepend(loadingMsg);
 
+    activeChatController = new AbortController();
+    setChatThinking(true);
+
     try {
         const response = await fetch("/chatMessage", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
+            signal: activeChatController.signal,
             body: JSON.stringify({
                 chatHistory: chatHistory,
                 model: modelSelect.value || "tinyllama:latest"
@@ -178,6 +205,15 @@ async function sendMessage() {
         console.error(err);
         loadingMsg.remove?.();
         sendOutput("Error: " + err.message);
+    } finally {
+        activeChatController = null;
+
+        // Turn Cancel back into Send
+        sendBtn.textContent = "Send";
+        sendBtn.classList.remove("cancel");
+
+        // Re-enable chat options
+        chatOptionsBtn.disabled = false;
     }
 }
 
@@ -202,11 +238,17 @@ function cleanText(text) {
     return DOMPurify.sanitize(rawHtml);
 }
 
-sendBtn.onclick = sendMessage;
+sendBtn.onclick = function () {
+    if (activeChatController) {
+        cancelChat();
+    } else {
+        sendMessage();
+    }
+};
 //test.onclick = sendOuput;
 
 input.addEventListener("keypress", function(e){
-    if(e.key === "Enter"){
+    if(e.key === "Enter" && !activeChatController) {
         sendMessage();
     }
 });
