@@ -138,9 +138,45 @@ async function sendMessage() {
 
     if (text.includes("[Page]")) {
         const currentPageText = getCurrentPageText();
-        chatHistory.push({ role: "user", content: currentPageText });
-        messages.prepend(createMsg("message", text + ": Current Page Added to Context"));
-        input.value = "";
+
+        if (!currentPageText.trim()) {
+            sendOutput("Unable to get text from the current page.");
+        }
+
+        try {
+            const response = await fetch("/add-page-to-chroma", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    text: currentPageText
+                })
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || "Failed to add page to ChromaDB");
+            }
+
+            const result = await response.json();
+
+            messages.prepend(
+                createMsg(
+                    "message",
+                    text + `: Current Page Added to Context (${result.chunks} chunks)`
+                )
+            );
+            
+            input.value = "";
+
+        } catch (err) {
+            console.error("chromaDB error:",err);
+            sendOutput("Error adding page to ChromaDB: " + err.message);
+        }
+            
+        //chatHistory.push({ role: "user", content: currentPageText });
+        //messages.prepend(createMsg("message", text + ": Current Page Added to Context"));
+
         return;
     }
 

@@ -116,6 +116,23 @@ def ensure_ollama_running():
 
     raise RuntimeError("Ollama could not be started.")
 
+def chunk_text(text, chunk_size=1000, overlap=200):
+    chunks = []
+
+    start = 0
+
+    while start < len(text):
+        end = start + chunk_size
+
+        chunk = text[start:end]
+
+        if chunk.strip():
+            chunks.append(chunk)
+
+        start += chunk_size - overlap
+
+    return chunks
+
 def getRelevantText(line, fileName):
     print("Sending step In prompt")
     document = PdfReader("./files/default/" + fileName)

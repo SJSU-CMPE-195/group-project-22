@@ -10,6 +10,7 @@ from flask import (
 )
 from flask_cors import CORS
 import chromadb
+import uuid
 import requests
 
 # import json
@@ -35,9 +36,11 @@ def serve_file(filename):
 def initial():
     global chromaClient
     global chromaCollection
+    global page_collection
     if chromaClient is None:
         chromaClient = chromadb.PersistentClient(path="./")
         chromaCollection = chromaClient.get_or_create_collection(name="collection")
+        page_collection = chromaClient.get_or_create_collection(name="page_collection")
     return render_template("app.html")
 
 
@@ -111,8 +114,43 @@ def chat_message():
         chat_history = data.get("chatHistory", [])
         model = data.get("model")
 
+        # Get latest user message
+        user_message = ""
+        if chat_history:
+            user_message = chat_history[-1].get("content", "")
+
+        # Query Chroma for relevant page context
+        results = page_collection.query(
+            query_texts=[user_message],
+            n_results=4
+        )
+
+        documents = results.get("documents", [[]])[0]
+
+        page_context = "\n\n".join(documents)
+
+        # Make a copy so we don't modify the original chat history
+        messages_for_model = chat_history.copy()
+
+        if page_context:
+            context_message = {
+                "role": "system",
+                "content": (
+                    "The following information was retrieved from pages "
+                    "the user previously added as context:\n\n"
+                    + page_context
+                )
+            }
+
+            # Put context after your original system message
+            if messages_for_model and messages_for_model[0].get("role") == "system":
+                messages_for_model.insert(1, context_message)
+            else:
+                messages_for_model.insert(0, context_message)
+
         def generate():
-            stream = gP.getChatResponse(chat_history, model)
+            stream = gP.getChatResponse(messages_for_model, model)
+            
             for chunk in stream:
                 content = chunk.get("message", {}).get("content", "")
                 if content:
@@ -123,6 +161,41 @@ def chat_message():
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/add-page-to-chroma", methods=["POST"])
+def add_page_to_chroma():
+    data = request.get_json()
+
+    page_text = data.get("text", "")
+
+    if not page_text.strip():
+        return jsonify({"error": "No page text supplied"}), 400
+
+    chunks = gP.chunk_text(page_text)
+
+    ids = []
+    documents = []
+    metadatas = []
+
+    for index, chunk in enumerate(chunks):
+        ids.append(str(uuid.uuid4()))
+        documents.append(chunk)
+
+        metadatas.append({
+            "source": "current_page",
+            "chunk": index
+        })
+
+    page_collection.add(
+        ids=ids,
+        documents=documents,
+        metadatas=metadatas
+    )
+
+    return jsonify({
+        "success": True,
+        "chunks": len(chunks)
+    })
 
 @app.route("/api/models")
 def get_models():
