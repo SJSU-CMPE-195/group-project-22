@@ -12,6 +12,7 @@ const chatOptionsBtn = document.getElementById("chatOptionsBtn");
 const chatOptionsMenu = document.getElementById("chatOptionsMenu");
 const clearChatOption = document.getElementById("clearChatOption");
 const clearChatHistoryOption = document.getElementById("clearChatHistoryOption");
+const clearPageCollectionOption = document.getElementById("clearPageCollectionOption");
 
 /* Toggle sidebar */
 function openChat() {
@@ -126,6 +127,21 @@ clearChatHistoryOption.addEventListener("click", function () {
         { role: "system", content: "You are a helpful assistant." }
     ];
     chatOptionsMenu.classList.add("hidden");
+});
+
+// Clear page collection
+clearPageCollectionOption.addEventListener("click", async function () {
+    try {
+        const response = await fetch("/clear-page-collection", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+    } catch (err) {
+        console.error("Error clearing page collection:", err);
+        sendOutput("Error clearing page collection: " + err.message);
+    }
 });
 
 /* Send message */

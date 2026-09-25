@@ -120,14 +120,22 @@ def chat_message():
             user_message = chat_history[-1].get("content", "")
 
         # Query Chroma for relevant page context
-        results = page_collection.query(
+        page_context = ""
+        
+        if page_collection.count() > 0:
+            results = page_collection.query(
             query_texts=[user_message],
-            n_results=4
+            n_results=min(4, page_collection.count()),
+            include=["documents", "distances"]
         )
+        documents = results.get("documents", [[]])[0]  # Get the first list of documents
+        distances = results.get("distances", [[]])[0]  # Get the first list of distances
 
-        documents = results.get("documents", [[]])[0]
+        relvant_documents = [
+            doc for doc, dist in zip(documents, distances) if dist < 1
+        ]
 
-        page_context = "\n\n".join(documents)
+        page_context = "\n\n".join(relevant_documents)
 
         # Make a copy so we don't modify the original chat history
         messages_for_model = chat_history.copy()
@@ -150,7 +158,7 @@ def chat_message():
 
         def generate():
             stream = gP.getChatResponse(messages_for_model, model)
-            
+
             for chunk in stream:
                 content = chunk.get("message", {}).get("content", "")
                 if content:
@@ -205,6 +213,44 @@ def get_models():
         "models": models
     })
 
+# tests to see what is in chroma collection page collection
+@app.route("/debug/chroma", methods=["GET"])
+def debug_chroma():
+    results = page_collection.get(
+        include=["documents", "metadatas"]
+    )
+
+    data = []
+
+    for i, doc_id in enumerate(results["ids"]):
+        data.append({
+            "id": doc_id,
+            "document": results["documents"][i],
+            "metadata": results["metadatas"][i]
+        })
+
+    return jsonify({
+        "count": len(data),
+        "items": data
+    })
+
+@app.route("/clear-page-collection", methods=["POST"])
+def clear_page_collection():
+    try:
+        results = page_collection.get()
+
+        if results["ids"]:
+            page_collection.delete(ids=results["ids"])
+
+        return jsonify({
+            "success": True,
+            "message": "Page collection cleared"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    
 if __name__ == "__main__":
     gP.ensure_ollama_running()
     app.run(debug=True)
