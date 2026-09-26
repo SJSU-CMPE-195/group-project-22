@@ -209,6 +209,7 @@ async function sendMessage() {
     setChatThinking(true);
 
     try {
+        console.log("Sending chat history to server:", chatHistory);
         const response = await fetch("/chatMessage", {
             method: "POST",
             headers: {
@@ -241,14 +242,64 @@ async function sendMessage() {
 
         let fullReply = "";
 
+        // while (true) {
+        //     const { value, done } = await reader.read();
+        //     if (done) break;
+
+        //     const chunkText = decoder.decode(value, { stream: true });
+        //     fullReply += chunkText;
+
+        //     msg.innerHTML = cleanText(fullReply);
+        // }
+
+        let buffer = "";
+
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
-            const chunkText = decoder.decode(value, { stream: true });
-            fullReply += chunkText;
+            buffer += decoder.decode(value, { stream: true });
 
-            msg.innerHTML = cleanText(fullReply);
+            const lines = buffer.split("\n");
+
+            buffer = lines.pop();
+
+            for (const line of lines) {
+
+                if (line.startsWith("__DEBUG__")) {
+
+                    try {
+                        const debug = JSON.parse(
+                            line.substring("__DEBUG__".length)
+                        );
+
+                        if (debug.type === "context_message") {
+                            console.log("--- Context Message ---");
+                            console.log(debug.content);
+                            console.log("-----------------------");
+                        } else if (debug.type === "chat_messages_recieved") {
+                            console.log("--- Chat Messages Received ---");
+                            console.log(debug.content);
+                            console.log("-------------------------------");
+                        } else {
+                            console.log("--- Chroma Chunk ---");
+                            console.log("Type:", debug.type);
+                            console.log("Distance:", debug.distance);
+                            console.log("Document:", debug.document);
+                            console.log("--------------------");
+                        }
+
+                    } catch (err) {
+                        console.error("Failed to parse Chroma debug data:", err);
+                    }
+
+                } else {
+
+                    fullReply += line + "\n";
+                    msg.innerHTML = cleanText(fullReply);
+
+                }
+            }
         }
 
         chatHistory.push({ role: "assistant", content: fullReply || "(no reply)" });

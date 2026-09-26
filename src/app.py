@@ -1,5 +1,6 @@
 from flask import (
     Flask,
+    json,
     jsonify,
     request,
     render_template,
@@ -109,6 +110,7 @@ def fetch_page():
 
 @app.route("/chatMessage", methods=["POST"])
 def chat_message():
+
     data = request.get_json()
     try:
         chat_history = data.get("chatHistory", [])
@@ -121,21 +123,35 @@ def chat_message():
 
         # Query Chroma for relevant page context
         page_context = ""
-        
+
         if page_collection.count() > 0:
             results = page_collection.query(
             query_texts=[user_message],
             n_results=min(4, page_collection.count()),
             include=["documents", "distances"]
-        )
-        documents = results.get("documents", [[]])[0]  # Get the first list of documents
-        distances = results.get("distances", [[]])[0]  # Get the first list of distances
+            )
+            documents = results.get("documents", [[]])[0]  # Get the first list of documents
+            distances = results.get("distances", [[]])[0]  # Get the first list of distances
 
-        relvant_documents = [
-            doc for doc, dist in zip(documents, distances) if dist < 1
-        ]
+            relevant_documents = []
+            debug_chunks = []
+            
+            for doc, dist in zip(documents, distances):
+                if dist < 1.5:
+                    relevant_documents.append(doc)
+                    debug_chunks.append({
+                        "type": "relevant",
+                        "distance": dist,
+                        "document": doc
+                    })
+                else:
+                    debug_chunks.append({
+                        "type": "unrelevant",
+                        "distance": dist,
+                        "document": doc
+                    })  
 
-        page_context = "\n\n".join(relevant_documents)
+            page_context = "\n\n".join(relevant_documents)
 
         # Make a copy so we don't modify the original chat history
         messages_for_model = chat_history.copy()
@@ -150,15 +166,30 @@ def chat_message():
                 )
             }
 
+            debug_chunks.append({
+                "type": "context_message",
+                "content": context_message
+            })
+
             # Put context after your original system message
             if messages_for_model and messages_for_model[0].get("role") == "system":
                 messages_for_model.insert(1, context_message)
             else:
                 messages_for_model.insert(0, context_message)
 
-        def generate():
-            stream = gP.getChatResponse(messages_for_model, model)
+            #check if the context message is in the messages_for_model
+            debug_chunks.append({
+                            "type": "chat_messages_recieved",
+                            "content": messages_for_model
+                        })
 
+        def generate():
+
+            for chunk in debug_chunks:
+                yield "__DEBUG__" + json.dumps(chunk) + "\n"
+
+            stream = gP.getChatResponse(messages_for_model, model)
+    
             for chunk in stream:
                 content = chunk.get("message", {}).get("content", "")
                 if content:
@@ -236,16 +267,19 @@ def debug_chroma():
 
 @app.route("/clear-page-collection", methods=["POST"])
 def clear_page_collection():
+    print("Page collection cleared",flush=True)
     try:
         results = page_collection.get()
 
         if results["ids"]:
             page_collection.delete(ids=results["ids"])
 
+
         return jsonify({
             "success": True,
             "message": "Page collection cleared"
         })
+        
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
