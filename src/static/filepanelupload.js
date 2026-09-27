@@ -55,7 +55,7 @@ function initToggle() {
     setupListEvents();
 }
 
-function showFilesList() {
+export function showFilesList() {
     const list = document.getElementById("filesList");
     list.innerHTML = "";
     fileInput.forEach((file, index) => {
@@ -76,7 +76,26 @@ function showFilesList() {
         list.appendChild(item);
     });
     highlightSelectedFile();
+    updateFileDropdown();
 }
+
+function updateFileDropdown() {
+    const dropdown = document.getElementById("file-dropdown");
+    if (!dropdown) return;
+    dropdown.innerHTML = "";
+    fileInput.forEach((file, index) => {
+        const opt = document.createElement("option");
+        opt.value = index;
+        opt.textContent = `${index + 1} - ${file.name}`;
+        dropdown.appendChild(opt);
+    });
+    dropdown.value = currFileIndex;
+}
+
+document.getElementById("file-dropdown").addEventListener("change", (e) => {
+    const index = parseInt(e.target.value, 10);
+    loadFileByIndex(index);
+});
 
 function setupListEvents() {
     const list = document.getElementById("filesList");
@@ -91,7 +110,7 @@ function setupListEvents() {
             if (index > 0) {
                 [fileInput[index - 1], fileInput[index]] = [fileInput[index], fileInput[index - 1]];
                 [fileStates[index - 1], fileStates[index]] = [fileStates[index], fileStates[index - 1]];
-                currFileIndex = index - 1;
+                setCurrFileIndex(index - 1);
                 showFilesList();
                 loadFileByIndex(currFileIndex);
             }
@@ -105,7 +124,7 @@ function setupListEvents() {
                 [fileStates[index + 1], fileStates[index]] =
                     [fileStates[index], fileStates[index + 1]];
 
-                currFileIndex = index + 1;
+                setCurrFileIndex(index + 1);
                 showFilesList();
                 loadFileByIndex(currFileIndex);
             }
@@ -145,7 +164,7 @@ function setupListEvents() {
         fileInput.splice(newIndex, 0 , movedFile);
         const [movedState] = fileStates.splice(oldIndex, 1);
         fileStates.splice(newIndex, 0, movedState);
-        currFileIndex = fileInput.findIndex(f => f.id === activeId);
+        setCurrFileIndex(fileInput.findIndex(f => f.id === activeId));
 
         showFilesList();
         loadFileByIndex(currFileIndex);
@@ -188,7 +207,7 @@ function removeFile(id) {
     fileInput.splice(index, 1);
     fileStates.splice(index, 1);
     if (fileInput.length === 0) {
-        currFileIndex = 0;
+        setCurrFileIndex(0);
         showFilesList();
         clearViewer();
         return;
@@ -216,8 +235,13 @@ function handleFileSelect(event) {
     event.preventDefault();
     const files = event.dataTransfer ? event.dataTransfer.files : event.target.files;
     for (let i = 0; i < files.length; i++) {
-        const id = crypto.randomUUID();
         const file = files[i];
+        const exists = fileInput.some(f => f.name === file.name);
+        if (exists) {
+            alert(`"${file.name}" is already in the list.`);
+            continue;
+        }
+        const id = crypto.randomUUID();
         fileInput.push({
             id,
             type: "uploaded",
@@ -287,6 +311,8 @@ export function highlightSelectedFile() {
             item.classList.remove("selected");
         }
     });
+    const dropdown = document.getElementById("file-dropdown");
+    if (dropdown) dropdown.value = currFileIndex;
 }
 
 function setupUploadResize() {
