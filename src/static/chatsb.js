@@ -12,6 +12,7 @@ const chatOptionsBtn = document.getElementById("chatOptionsBtn");
 const chatOptionsMenu = document.getElementById("chatOptionsMenu");
 const clearChatOption = document.getElementById("clearChatOption");
 const clearChatHistoryOption = document.getElementById("clearChatHistoryOption");
+const clearPageCollectionOption = document.getElementById("clearPageCollectionOption");
 
 /* Toggle sidebar */
 function openChat() {
@@ -31,6 +32,77 @@ let chatHistory = [
     { role: "system", content: "You are a helpful assistant." }
 ];
 
+let activeChatController = null;
+
+/* Cancel functionality */
+function setChatThinking(isThinking) {
+    if (isThinking) {
+        sendBtn.textContent = "Cancel";
+        sendBtn.classList.add("cancel");
+        chatOptionsBtn.disabled = true;
+    } else {
+        sendBtn.textContent = "Send";
+        sendBtn.classList.remove("cancel");
+        chatOptionsBtn.disabled = false;
+    }
+}
+
+function cancelChat() {
+    if (activeChatController) {
+        activeChatController.abort();
+        activeChatController = null;
+        chatHistory.pop(); // Remove the last user message since it was not processed
+        setChatThinking(false);
+    }
+}
+
+/* Model selection */
+const modelSelect = document.getElementById("modelSelect");
+
+async function loadModels() {
+    try {
+        const response = await fetch("/api/models");
+
+        if (!response.ok) {
+            throw new Error("Failed to load models");
+        }
+
+        const data = await response.json();
+
+        modelSelect.innerHTML = "";
+
+        if (!data.models || data.models.length === 0) {
+            const option = document.createElement("option");
+            option.textContent = "No models found";
+            option.value = "";
+            modelSelect.appendChild(option);
+            return;
+        }
+
+        data.models.forEach(model => {
+            const option = document.createElement("option");
+
+            option.value = model;
+            option.textContent = model;
+
+            modelSelect.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error("Error loading Ollama models:", error);
+
+        modelSelect.innerHTML = "";
+
+        const option = document.createElement("option");
+        option.textContent = "Ollama unavailable";
+        option.value = "";
+
+        modelSelect.appendChild(option);
+    }
+}
+
+loadModels();
+
 /* Chat options menu */
 chatOptionsBtn.addEventListener("click", function (e) {
     e.stopPropagation();
@@ -43,11 +115,13 @@ document.addEventListener("click", function (e) {
     }
 });
 
+// Clear chat view
 clearChatOption.addEventListener("click", function () {
     messages.innerHTML = "";
     chatOptionsMenu.classList.add("hidden");
 });
 
+//Clear chat history
 clearChatHistoryOption.addEventListener("click", function () {
     chatHistory = [
         { role: "system", content: "You are a helpful assistant." }
@@ -55,17 +129,70 @@ clearChatHistoryOption.addEventListener("click", function () {
     chatOptionsMenu.classList.add("hidden");
 });
 
+// Clear page collection
+clearPageCollectionOption.addEventListener("click", async function () {
+    try {
+        const response = await fetch("/clear-page-collection", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+    } catch (err) {
+        console.error("Error clearing page collection:", err);
+        sendOutput("Error clearing page collection: " + err.message);
+    }
+});
+
 /* Send message */
 async function sendMessage() {
     const text = input.value.trim();
     console.log("chatHistory:", chatHistory);
+    console.log("Selected model:", modelSelect.value);
+
     if (!text) return;
 
     if (text.includes("[Page]")) {
         const currentPageText = getCurrentPageText();
-        chatHistory.push({ role: "user", content: currentPageText });
-        messages.prepend(createMsg("message", text + ": Current Page Added to Context"));
-        input.value = "";
+
+        if (!currentPageText.trim()) {
+            sendOutput("Unable to get text from the current page.");
+        }
+
+        try {
+            const response = await fetch("/add-page-to-chroma", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    text: currentPageText
+                })
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || "Failed to add page to ChromaDB");
+            }
+
+            const result = await response.json();
+
+            messages.prepend(
+                createMsg(
+                    "message",
+                    text + `: Current Page Added to Context (${result.chunks} chunks)`
+                )
+            );
+            
+            input.value = "";
+
+        } catch (err) {
+            console.error("chromaDB error:",err);
+            sendOutput("Error adding page to ChromaDB: " + err.message);
+        }
+            
+        //chatHistory.push({ role: "user", content: currentPageText });
+        //messages.prepend(createMsg("message", text + ": Current Page Added to Context"));
+
         return;
     }
 
@@ -78,14 +205,20 @@ async function sendMessage() {
     const loadingMsg = createMsg("thinking-message", "Thinking");
     messages.prepend(loadingMsg);
 
+    activeChatController = new AbortController();
+    setChatThinking(true);
+
     try {
+        console.log("Sending chat history to server:", chatHistory);
         const response = await fetch("/chatMessage", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
+            signal: activeChatController.signal,
             body: JSON.stringify({
-                chatHistory: chatHistory
+                chatHistory: chatHistory,
+                model: modelSelect.value || "tinyllama:latest"
             })
         });
 
@@ -109,14 +242,64 @@ async function sendMessage() {
 
         let fullReply = "";
 
+        // while (true) {
+        //     const { value, done } = await reader.read();
+        //     if (done) break;
+
+        //     const chunkText = decoder.decode(value, { stream: true });
+        //     fullReply += chunkText;
+
+        //     msg.innerHTML = cleanText(fullReply);
+        // }
+
+        let buffer = "";
+
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
-            const chunkText = decoder.decode(value, { stream: true });
-            fullReply += chunkText;
+            buffer += decoder.decode(value, { stream: true });
 
-            msg.innerHTML = cleanText(fullReply);
+            const lines = buffer.split("\n");
+
+            buffer = lines.pop();
+
+            for (const line of lines) {
+
+                if (line.startsWith("__DEBUG__")) {
+
+                    try {
+                        const debug = JSON.parse(
+                            line.substring("__DEBUG__".length)
+                        );
+
+                        if (debug.type === "context_message") {
+                            console.log("--- Context Message ---");
+                            console.log(debug.content);
+                            console.log("-----------------------");
+                        } else if (debug.type === "chat_messages_recieved") {
+                            console.log("--- Chat Messages Received ---");
+                            console.log(debug.content);
+                            console.log("-------------------------------");
+                        } else {
+                            console.log("--- Chroma Chunk ---");
+                            console.log("Type:", debug.type);
+                            console.log("Distance:", debug.distance);
+                            console.log("Document:", debug.document);
+                            console.log("--------------------");
+                        }
+
+                    } catch (err) {
+                        console.error("Failed to parse Chroma debug data:", err);
+                    }
+
+                } else {
+
+                    fullReply += line + "\n";
+                    msg.innerHTML = cleanText(fullReply);
+
+                }
+            }
         }
 
         chatHistory.push({ role: "assistant", content: fullReply || "(no reply)" });
@@ -125,6 +308,15 @@ async function sendMessage() {
         console.error(err);
         loadingMsg.remove?.();
         sendOutput("Error: " + err.message);
+    } finally {
+        activeChatController = null;
+
+        // Turn Cancel back into Send
+        sendBtn.textContent = "Send";
+        sendBtn.classList.remove("cancel");
+
+        // Re-enable chat options
+        chatOptionsBtn.disabled = false;
     }
 }
 
@@ -149,11 +341,17 @@ function cleanText(text) {
     return DOMPurify.sanitize(rawHtml);
 }
 
-sendBtn.onclick = sendMessage;
+sendBtn.onclick = function () {
+    if (activeChatController) {
+        cancelChat();
+    } else {
+        sendMessage();
+    }
+};
 //test.onclick = sendOuput;
 
 input.addEventListener("keypress", function(e){
-    if(e.key === "Enter"){
+    if(e.key === "Enter" && !activeChatController) {
         sendMessage();
     }
 });

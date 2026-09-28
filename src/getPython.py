@@ -1,7 +1,11 @@
 from ollama import chat
 from ollama import ChatResponse
 from pypdf import PdfReader
+import subprocess
+import time
+import httpx
 
+OLLAMA_URL = "http://127.0.0.1:11434"
 
 # this is for webpage for information
 def getPrompt(line):
@@ -53,16 +57,81 @@ def getPrompt(line):
     results.append(textStr)
     return results
 
-
-def getChatResponse(chatHistory):
+#chat side bar functionality
+def getChatResponse(chatHistory, model):
 
     return chat(
-        model="tinyllama:latest",
+        model=model,
         messages=chatHistory,
         options={"temperature": 0.7},
         stream=True,
     )
 
+def getOllamaModels():
+
+    try:
+        response = httpx.get(
+            f"{OLLAMA_URL}/api/tags",
+            timeout=5
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return [
+            model["name"]
+            for model in data.get("models", [])
+        ]
+
+    except httpx.HTTPError as e:
+        print(f"Could not get Ollama models: {e}")
+        return []
+
+def ensure_ollama_running():
+    try:
+        httpx.get(f"{OLLAMA_URL}/api/tags", timeout=2)
+        return
+    except httpx.RequestError:
+        print("Ollama is not running. Starting it...")
+
+    subprocess.Popen(
+        ["ollama", "serve"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
+
+    # Give Ollama a few seconds to start
+    for _ in range(10):
+        try:
+            response = httpx.get(f"{OLLAMA_URL}/api/tags", timeout=2)
+            if response.status_code == 200:
+                print("Ollama started successfully.")
+                return
+        except httpx.RequestError:
+            pass
+
+        time.sleep(1)
+
+    raise RuntimeError("Ollama could not be started.")
+
+def chunk_text(text, chunk_size=1000, overlap=200):
+    chunks = []
+
+    start = 0
+
+    while start < len(text):
+        end = start + chunk_size
+
+        chunk = text[start:end]
+
+        if chunk.strip():
+            chunks.append(chunk)
+
+        start += chunk_size - overlap
+
+    return chunks
 
 def getRelevantText(line, fileName):
     print("Sending step In prompt")
