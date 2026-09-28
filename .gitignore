@@ -141,6 +141,8 @@ temp/
 *.sqlite3
 *.db
 *.sql.gz
+*.bin
+0ed95086-cab0-4588-a8db-c98fdf1bb07d/
 
 # ===========================
 # Docker (local volumes)
