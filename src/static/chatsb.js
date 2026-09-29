@@ -184,14 +184,14 @@ async function sendMessage() {
                     text + `: Current Page Added to Context (${result.chunks} chunks)`
                 )
             );
-
+            
             input.value = "";
 
         } catch (err) {
-            console.error("chromaDB error:", err);
+            console.error("chromaDB error:",err);
             sendOutput("Error adding page to ChromaDB: " + err.message);
         }
-
+            
         //chatHistory.push({ role: "user", content: currentPageText });
         //messages.prepend(createMsg("message", text + ": Current Page Added to Context"));
 
@@ -314,8 +314,8 @@ sendBtn.onclick = function () {
 };
 //test.onclick = sendOuput;
 
-input.addEventListener("keypress", function (e) {
-    if (e.key === "Enter" && !activeChatController) {
+input.addEventListener("keypress", function(e){
+    if(e.key === "Enter" && !activeChatController) {
         sendMessage();
     }
 });
