@@ -7,6 +7,7 @@ import httpx
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 
+
 # this is for webpage for information
 def getPrompt(line):
     print("Sending Prompt")
@@ -57,7 +58,8 @@ def getPrompt(line):
     results.append(textStr)
     return results
 
-#chat side bar functionality
+
+# chat side bar functionality
 def getChatResponse(chatHistory, model):
 
     stream = chat(
@@ -66,7 +68,7 @@ def getChatResponse(chatHistory, model):
         options={"temperature": 0.7},
         stream=True,
     )
-    
+
     for chunk in stream:
         msg = getattr(chunk, "message", None)
         if not msg:
@@ -82,26 +84,22 @@ def getChatResponse(chatHistory, model):
         if thinking:
             yield thinking
 
+
 def getOllamaModels():
 
     try:
-        response = httpx.get(
-            f"{OLLAMA_URL}/api/tags",
-            timeout=5
-        )
+        response = httpx.get(f"{OLLAMA_URL}/api/tags", timeout=5)
 
         response.raise_for_status()
 
         data = response.json()
 
-        return [
-            model["name"]
-            for model in data.get("models", [])
-        ]
+        return [model["name"] for model in data.get("models", [])]
 
     except httpx.HTTPError as e:
         print(f"Could not get Ollama models: {e}")
         return []
+
 
 def ensure_ollama_running():
     try:
@@ -131,6 +129,7 @@ def ensure_ollama_running():
 
     raise RuntimeError("Ollama could not be started.")
 
+
 def chunk_text(text, chunk_size=1000, overlap=200):
     chunks = []
 
@@ -148,6 +147,7 @@ def chunk_text(text, chunk_size=1000, overlap=200):
 
     return chunks
 
+
 def getRelevantText(line, fileName):
     print("Sending step In prompt")
     document = PdfReader("./files/default/" + fileName)
@@ -161,9 +161,9 @@ def getRelevantText(line, fileName):
             text += page_text + "\n"
     # textarr = text.split("\n")
     if not text.strip():
-        print("Debug: No extractable text in pdf");
+        print("Debug: No extractable text in pdf")
         return "No extractable text in Pdf.", None, []
-    
+
     response: ChatResponse = chat(
         model="llama3.1:8b",
         messages=[
@@ -177,13 +177,9 @@ def getRelevantText(line, fileName):
         ],
     )
     promptRes = response.message.content
-    
+
     print(promptRes)
-    snippet_lines = [
-        l.strip()
-        for l in promptRes.split("\n")
-        if l.strip()
-    ]
+    snippet_lines = [line.strip() for line in promptRes.split("\n") if line.strip()]
     for sl in snippet_lines:
         print(f"SNIPPET: [{sl}]")
 
@@ -191,18 +187,14 @@ def getRelevantText(line, fileName):
         page_text = document.pages[i].extract_text()
         if not page_text:
             continue
-        page_lines = [
-            l.strip()
-            for l in page_text.split("\n")
-            if l.strip()
-        ]
+        page_lines = [line.strip() for line in page_text.split("\n") if line.strip()]
         print(f"\n--- PAGE {i} ---")
         for pl in page_lines:
             print(f"PAGE LINE: [{pl}]")
         for snippet_line in snippet_lines:
             print(f"COMPARE snippet=[{snippet_line}] WITH PAGE LINE(S)")
             if snippet_line in page_lines:
-                print(f"\n*** MATCH FOUND ***")
+                print("\n*** MATCH FOUND ***")
                 print(f"Matched snippet line: [{snippet_line}]")
                 print(f"On page: {i}")
                 return promptRes, i, page_lines

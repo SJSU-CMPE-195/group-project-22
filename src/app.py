@@ -131,30 +131,30 @@ def chat_message():
 
         if page_collection.count() > 0:
             results = page_collection.query(
-            query_texts=[user_message],
-            n_results=min(4, page_collection.count()),
-            include=["documents", "distances"]
+                query_texts=[user_message],
+                n_results=min(4, page_collection.count()),
+                include=["documents", "distances"],
             )
-            documents = results.get("documents", [[]])[0]  # Get the first list of documents
-            distances = results.get("distances", [[]])[0]  # Get the first list of distances
+            documents = results.get("documents", [[]])[
+                0
+            ]  # Get the first list of documents
+            distances = results.get("distances", [[]])[
+                0
+            ]  # Get the first list of distances
 
             relevant_documents = []
-            debug_chunks = [] 
-            
+            debug_chunks = []
+
             for doc, dist in zip(documents, distances):
                 if dist < 1.5:
                     relevant_documents.append(doc)
-                    debug_chunks.append({
-                        "type": "relevant",
-                        "distance": dist,
-                        "document": doc
-                    })
+                    debug_chunks.append(
+                        {"type": "relevant", "distance": dist, "document": doc}
+                    )
                 else:
-                    debug_chunks.append({
-                        "type": "unrelevant",
-                        "distance": dist,
-                        "document": doc
-                    })  
+                    debug_chunks.append(
+                        {"type": "unrelevant", "distance": dist, "document": doc}
+                    )
 
             page_context = "\n\n".join(relevant_documents)
 
@@ -166,15 +166,11 @@ def chat_message():
                 "role": "system",
                 "content": (
                     "The following information was retrieved from pages "
-                    "the user previously added as context:\n\n"
-                    + page_context
-                )
+                    "the user previously added as context:\n\n" + page_context
+                ),
             }
 
-            debug_chunks.append({
-                "type": "context_message",
-                "content": context_message
-            })
+            debug_chunks.append({"type": "context_message", "content": context_message})
 
             # Put context after your original system message
             if messages_for_model and messages_for_model[0].get("role") == "system":
@@ -182,22 +178,21 @@ def chat_message():
             else:
                 messages_for_model.insert(0, context_message)
 
-            #check if the context message is in the messages_for_model
-            debug_chunks.append({
-                            "type": "chat_messages_recieved",
-                            "content": messages_for_model
-                        })
-        
+            # check if the context message is in the messages_for_model
+            debug_chunks.append(
+                {"type": "chat_messages_recieved", "content": messages_for_model}
+            )
+
         def generate():
             for chunk in debug_chunks:
                 yield "__DEBUG__" + json.dumps(chunk) + "\n"
 
             stream = gP.getChatResponse(messages_for_model, model)
-    
+
             for text in stream:
                 if not text or not text.strip():
                     continue
-                
+
                 yield text
 
         return Response(
@@ -205,6 +200,7 @@ def chat_message():
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/add-page-to-chroma", methods=["POST"])
 def add_page_to_chroma():
@@ -225,71 +221,54 @@ def add_page_to_chroma():
         ids.append(str(uuid.uuid4()))
         documents.append(chunk)
 
-        metadatas.append({
-            "source": "current_page",
-            "chunk": index
-        })
+        metadatas.append({"source": "current_page", "chunk": index})
 
-    page_collection.add(
-        ids=ids,
-        documents=documents,
-        metadatas=metadatas
-    )
+    page_collection.add(ids=ids, documents=documents, metadatas=metadatas)
 
-    return jsonify({
-        "success": True,
-        "chunks": len(chunks)
-    })
+    return jsonify({"success": True, "chunks": len(chunks)})
+
 
 @app.route("/api/models")
 def get_models():
     models = gP.getOllamaModels()
 
-    return jsonify({
-        "models": models
-    })
+    return jsonify({"models": models})
+
 
 # tests to see what is in chroma collection page collection
 @app.route("/debug/chroma", methods=["GET"])
 def debug_chroma():
-    results = page_collection.get(
-        include=["documents", "metadatas"]
-    )
+    results = page_collection.get(include=["documents", "metadatas"])
 
     data = []
 
     for i, doc_id in enumerate(results["ids"]):
-        data.append({
-            "id": doc_id,
-            "document": results["documents"][i],
-            "metadata": results["metadatas"][i]
-        })
+        data.append(
+            {
+                "id": doc_id,
+                "document": results["documents"][i],
+                "metadata": results["metadatas"][i],
+            }
+        )
 
-    return jsonify({
-        "count": len(data),
-        "items": data
-    })
+    return jsonify({"count": len(data), "items": data})
+
 
 @app.route("/clear-page-collection", methods=["POST"])
 def clear_page_collection():
-    print("Page collection cleared",flush=True)
+    print("Page collection cleared", flush=True)
     try:
         results = page_collection.get()
 
         if results["ids"]:
             page_collection.delete(ids=results["ids"])
 
-
-        return jsonify({
-            "success": True,
-            "message": "Page collection cleared"
-        })
-        
+        return jsonify({"success": True, "message": "Page collection cleared"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    
+
 if __name__ == "__main__":
     gP.ensure_ollama_running()
     app.run(debug=True)
