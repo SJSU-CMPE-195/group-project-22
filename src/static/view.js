@@ -68,7 +68,7 @@ export async function stepIn() {
                 resetLine: true
             });
             alert(
-                "Stepped in with:\n" + prevLine +
+                "Stepped in with:\n" + stepInLine +
                 "\n\nRelevant text from " + fileInput[currFileIndex].name + ":\n\n" +
                 resultObj.text
             );
