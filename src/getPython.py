@@ -7,6 +7,7 @@ import httpx
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 
+
 # this is for webpage for information
 def getPrompt(line):
     print("Sending Prompt")
@@ -57,36 +58,48 @@ def getPrompt(line):
     results.append(textStr)
     return results
 
-#chat side bar functionality
+
+# chat side bar functionality
 def getChatResponse(chatHistory, model):
 
-    return chat(
+    stream = chat(
         model=model,
         messages=chatHistory,
         options={"temperature": 0.7},
         stream=True,
     )
 
+    for chunk in stream:
+        msg = getattr(chunk, "message", None)
+        if not msg:
+            continue
+
+        # Prefer content tokens
+        if getattr(msg, "content", None):
+            yield msg.content
+            continue
+
+        # If content is empty, use thinking tokens
+        thinking = getattr(msg, "thinking", None)
+        if thinking:
+            yield thinking
+
+
 def getOllamaModels():
 
     try:
-        response = httpx.get(
-            f"{OLLAMA_URL}/api/tags",
-            timeout=5
-        )
+        response = httpx.get(f"{OLLAMA_URL}/api/tags", timeout=5)
 
         response.raise_for_status()
 
         data = response.json()
 
-        return [
-            model["name"]
-            for model in data.get("models", [])
-        ]
+        return [model["name"] for model in data.get("models", [])]
 
     except httpx.HTTPError as e:
         print(f"Could not get Ollama models: {e}")
         return []
+
 
 def ensure_ollama_running():
     try:
@@ -116,6 +129,7 @@ def ensure_ollama_running():
 
     raise RuntimeError("Ollama could not be started.")
 
+
 def chunk_text(text, chunk_size=1000, overlap=200):
     chunks = []
 
@@ -133,6 +147,7 @@ def chunk_text(text, chunk_size=1000, overlap=200):
 
     return chunks
 
+
 def getRelevantText(line, fileName):
     print("Sending step In prompt")
     document = PdfReader("./files/default/" + fileName)
@@ -141,22 +156,47 @@ def getRelevantText(line, fileName):
         length = 20
     text = ""
     for i in range(length):
-        text += document.pages[i].extract_text()
-    #textarr = text.split("\n")
-    promptString = "From the following text: (MUST ANSWER WITH A SECTION FROM THIS TEXT ONLY) " + text + "Give me ONLY the most relevant text (ANSWER WITH JUST THIS TEXT) related to the following." + line
+        page_text = document.pages[i].extract_text()
+        if page_text:
+            text += page_text + "\n"
+    # textarr = text.split("\n")
+    if not text.strip():
+        print("Debug: No extractable text in pdf")
+        return "No extractable text in Pdf.", None, []
+
     response: ChatResponse = chat(
-        model="gemma4:31b-cloud",
+        model="llama3.1:8b",
         messages=[
             {
-                'role': 'user',
-                'content': promptString
+                "role": "user",
+                "content": "From the following text: (MUST ANSWER WITH A SECTION FROM THIS TEXT ONLY, NO PARAPHRASING) "
+                + text
+                + "Give me ONLY the most relevant text (ANSWER WITH JUST THIS TEXT VERBATIM) related to the following."
+                + str(line),
             },
         ],
     )
     promptRes = response.message.content
-    print(promptRes)
 
-    """for i in range(len(document.pages)):
-      if(document.pages[i].extract_text().strip().find(promptRes.strip()) != -1):
-          pageNum = i"""
-    return promptRes
+    print(promptRes)
+    snippet_lines = [line.strip() for line in promptRes.split("\n") if line.strip()]
+    for sl in snippet_lines:
+        print(f"SNIPPET: [{sl}]")
+
+    for i in range(len(document.pages)):
+        page_text = document.pages[i].extract_text()
+        if not page_text:
+            continue
+        page_lines = [line.strip() for line in page_text.split("\n") if line.strip()]
+        print(f"\n--- PAGE {i} ---")
+        for pl in page_lines:
+            print(f"PAGE LINE: [{pl}]")
+        for snippet_line in snippet_lines:
+            print(f"COMPARE snippet=[{snippet_line}] WITH PAGE LINE(S)")
+            if snippet_line in page_lines:
+                print("\n*** MATCH FOUND ***")
+                print(f"Matched snippet line: [{snippet_line}]")
+                print(f"On page: {i}")
+                return promptRes, i, page_lines
+    print("\n*** NO PAGE MATCH FOUND ***")
+    return promptRes, None, []

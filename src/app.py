@@ -24,6 +24,7 @@ from bs4 import BeautifulSoup
 app = Flask(__name__)
 chromaClient = None
 chromaCollection = None
+page_collection = None
 # allow requests from multiple origins.
 CORS(app)
 
@@ -49,7 +50,8 @@ def initial():
 # create a get request for a webpage, and then generate the pdf.
 @app.route("/getWebpage", methods=["POST"])
 def getW():
-    response = request.get_json()
+    data = request.get_json()
+    response = data.get("url", "")
     list = gP.getPrompt(response)
     # jsonObj = {"link": list[0], "text": list[1]}
     # add this webpages text for future requests.
@@ -57,6 +59,7 @@ def getW():
         ids={json.dumps(response)},
         documents={json.dumps(jsonObj)},
     )"""
+
     jsonResult = jsonify({"link": list[0], "text": list[1]})
     return jsonResult
 
@@ -67,10 +70,12 @@ def stepIn():
     data = request.get_json()
     line = data.get("line")
     fileName = data.get("fileName")
-    res = gP.getRelevantText(line, fileName)
+    # res = gP.getRelevantText(line, fileName)
+    relevant_text, pageNum, page_lines = gP.getRelevantText(line, fileName)
+    backend_page_text = "\n".join(page_lines)
     # obj = {"text": res[0], "pageNum": res[1]}
     # print(json.dumps(obj))
-    return jsonify({"text": res[0], "pageNum": res[1]})
+    return jsonify({"text": relevant_text, "pageText": backend_page_text})
 
 
 @app.route("/fetch-page", methods=["POST"])
@@ -115,7 +120,7 @@ def chat_message():
     try:
         chat_history = data.get("chatHistory", [])
         model = data.get("model")
-
+        debug_chunks = []
         # Get latest user message
         user_message = ""
         if chat_history:
@@ -126,30 +131,30 @@ def chat_message():
 
         if page_collection.count() > 0:
             results = page_collection.query(
-            query_texts=[user_message],
-            n_results=min(4, page_collection.count()),
-            include=["documents", "distances"]
+                query_texts=[user_message],
+                n_results=min(4, page_collection.count()),
+                include=["documents", "distances"],
             )
-            documents = results.get("documents", [[]])[0]  # Get the first list of documents
-            distances = results.get("distances", [[]])[0]  # Get the first list of distances
+            documents = results.get("documents", [[]])[
+                0
+            ]  # Get the first list of documents
+            distances = results.get("distances", [[]])[
+                0
+            ]  # Get the first list of distances
 
             relevant_documents = []
             debug_chunks = []
-            
+
             for doc, dist in zip(documents, distances):
                 if dist < 1.5:
                     relevant_documents.append(doc)
-                    debug_chunks.append({
-                        "type": "relevant",
-                        "distance": dist,
-                        "document": doc
-                    })
+                    debug_chunks.append(
+                        {"type": "relevant", "distance": dist, "document": doc}
+                    )
                 else:
-                    debug_chunks.append({
-                        "type": "unrelevant",
-                        "distance": dist,
-                        "document": doc
-                    })  
+                    debug_chunks.append(
+                        {"type": "unrelevant", "distance": dist, "document": doc}
+                    )
 
             page_context = "\n\n".join(relevant_documents)
 
@@ -161,15 +166,11 @@ def chat_message():
                 "role": "system",
                 "content": (
                     "The following information was retrieved from pages "
-                    "the user previously added as context:\n\n"
-                    + page_context
-                )
+                    "the user previously added as context:\n\n" + page_context
+                ),
             }
 
-            debug_chunks.append({
-                "type": "context_message",
-                "content": context_message
-            })
+            debug_chunks.append({"type": "context_message", "content": context_message})
 
             # Put context after your original system message
             if messages_for_model and messages_for_model[0].get("role") == "system":
@@ -177,29 +178,29 @@ def chat_message():
             else:
                 messages_for_model.insert(0, context_message)
 
-            #check if the context message is in the messages_for_model
-            debug_chunks.append({
-                            "type": "chat_messages_recieved",
-                            "content": messages_for_model
-                        })
+            # check if the context message is in the messages_for_model
+            debug_chunks.append(
+                {"type": "chat_messages_recieved", "content": messages_for_model}
+            )
 
         def generate():
-
             for chunk in debug_chunks:
                 yield "__DEBUG__" + json.dumps(chunk) + "\n"
 
             stream = gP.getChatResponse(messages_for_model, model)
-    
-            for chunk in stream:
-                content = chunk.get("message", {}).get("content", "")
-                if content:
-                    yield content
+
+            for text in stream:
+                if not text or not text.strip():
+                    continue
+
+                yield text
 
         return Response(
             stream_with_context(generate()), content_type="text/plain; charset=utf-8"
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/add-page-to-chroma", methods=["POST"])
 def add_page_to_chroma():
@@ -220,71 +221,54 @@ def add_page_to_chroma():
         ids.append(str(uuid.uuid4()))
         documents.append(chunk)
 
-        metadatas.append({
-            "source": "current_page",
-            "chunk": index
-        })
+        metadatas.append({"source": "current_page", "chunk": index})
 
-    page_collection.add(
-        ids=ids,
-        documents=documents,
-        metadatas=metadatas
-    )
+    page_collection.add(ids=ids, documents=documents, metadatas=metadatas)
 
-    return jsonify({
-        "success": True,
-        "chunks": len(chunks)
-    })
+    return jsonify({"success": True, "chunks": len(chunks)})
+
 
 @app.route("/api/models")
 def get_models():
     models = gP.getOllamaModels()
 
-    return jsonify({
-        "models": models
-    })
+    return jsonify({"models": models})
+
 
 # tests to see what is in chroma collection page collection
 @app.route("/debug/chroma", methods=["GET"])
 def debug_chroma():
-    results = page_collection.get(
-        include=["documents", "metadatas"]
-    )
+    results = page_collection.get(include=["documents", "metadatas"])
 
     data = []
 
     for i, doc_id in enumerate(results["ids"]):
-        data.append({
-            "id": doc_id,
-            "document": results["documents"][i],
-            "metadata": results["metadatas"][i]
-        })
+        data.append(
+            {
+                "id": doc_id,
+                "document": results["documents"][i],
+                "metadata": results["metadatas"][i],
+            }
+        )
 
-    return jsonify({
-        "count": len(data),
-        "items": data
-    })
+    return jsonify({"count": len(data), "items": data})
+
 
 @app.route("/clear-page-collection", methods=["POST"])
 def clear_page_collection():
-    print("Page collection cleared",flush=True)
+    print("Page collection cleared", flush=True)
     try:
         results = page_collection.get()
 
         if results["ids"]:
             page_collection.delete(ids=results["ids"])
 
-
-        return jsonify({
-            "success": True,
-            "message": "Page collection cleared"
-        })
-        
+        return jsonify({"success": True, "message": "Page collection cleared"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    
+
 if __name__ == "__main__":
     gP.ensure_ollama_running()
     app.run(debug=True)

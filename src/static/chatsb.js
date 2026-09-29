@@ -1,4 +1,6 @@
 import { getCurrentPageText } from "./view.js";
+import { updateButtons, viewState, fileStates } from "./viewState.js";
+import { setCurrFileIndex, fileInput, showFilesList, loadFileCallback, highlightSelectedFile } from "./filepanelupload.js";
 
 const sidebar = document.getElementById("chatSidebar");
 const openChatBtn = document.getElementById("openChatBtn");
@@ -226,7 +228,7 @@ async function sendMessage() {
             const errText = await response.text();
             throw new Error(errText || "Request failed");
         }
-        
+
         if (!response.body) {
             throw new Error("Streaming not supported by this response");
         }
@@ -258,48 +260,10 @@ async function sendMessage() {
             const { value, done } = await reader.read();
             if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
+            const chunkText = decoder.decode(value, { stream: true });
 
-            const lines = buffer.split("\n");
-
-            buffer = lines.pop();
-
-            for (const line of lines) {
-
-                if (line.startsWith("__DEBUG__")) {
-
-                    try {
-                        const debug = JSON.parse(
-                            line.substring("__DEBUG__".length)
-                        );
-
-                        if (debug.type === "context_message") {
-                            console.log("--- Context Message ---");
-                            console.log(debug.content);
-                            console.log("-----------------------");
-                        } else if (debug.type === "chat_messages_recieved") {
-                            console.log("--- Chat Messages Received ---");
-                            console.log(debug.content);
-                            console.log("-------------------------------");
-                        } else {
-                            console.log("--- Chroma Chunk ---");
-                            console.log("Type:", debug.type);
-                            console.log("Distance:", debug.distance);
-                            console.log("Document:", debug.document);
-                            console.log("--------------------");
-                        }
-
-                    } catch (err) {
-                        console.error("Failed to parse Chroma debug data:", err);
-                    }
-
-                } else {
-
-                    fullReply += line + "\n";
-                    msg.innerHTML = cleanText(fullReply);
-
-                }
-            }
+            fullReply += chunkText;
+            msg.innerHTML = cleanText(fullReply);
         }
 
         chatHistory.push({ role: "assistant", content: fullReply || "(no reply)" });
@@ -359,14 +323,14 @@ input.addEventListener("keypress", function(e){
 /* Resize sidebar by dragging left edge */
 let isResizing = false;
 
-resizeHandle.addEventListener("mousedown", function(e) {
+resizeHandle.addEventListener("mousedown", function (e) {
     e.preventDefault();
     isResizing = true;
     document.body.style.cursor = "ew-resize";
     document.body.style.userSelect = "none";
 });
 
-document.addEventListener("mousemove", function(e) {
+document.addEventListener("mousemove", function (e) {
     if (!isResizing) return;
 
     e.preventDefault();
@@ -381,7 +345,7 @@ document.addEventListener("mousemove", function(e) {
     sidebar.style.width = newWidth + "px";
 });
 
-document.addEventListener("mouseup", function() {
+document.addEventListener("mouseup", function () {
     if (!isResizing) return;
 
     isResizing = false;
@@ -390,50 +354,97 @@ document.addEventListener("mouseup", function() {
 });
 
 // fetch URL and convert to PDF
-const fetchBtn      = document.getElementById('fetch-btn');
-const exportPdfBtn  = document.getElementById('export-pdf-btn');
+const fetchBtn = document.getElementById('fetch-btn');
+const exportPdfBtn = document.getElementById('export-pdf-btn');
 const fetchUrlInput = document.getElementById('fetch-url');
-const fetchStatus   = document.getElementById('fetch-status');
+const fetchStatus = document.getElementById('fetch-status');
 
 fetchBtn.addEventListener('click', async () => {
-  const url = fetchUrlInput.value.trim();
-  if (!url) { fetchStatus.textContent = 'Please enter a URL.'; return; }
+    const url = fetchUrlInput.value.trim();
+    if (!url) { fetchStatus.textContent = 'Please enter a URL.'; return; }
 
-  fetchBtn.disabled = true;
-  exportPdfBtn.disabled = true;
-  fetchStatus.textContent = 'Fetching...';
+    fetchBtn.disabled = true;
+    exportPdfBtn.disabled = true;
+    document.getElementById("add-to-list-btn").disabled = true;
+    fetchStatus.textContent = 'Fetching...';
 
-  try {
-    const res = await fetch('/fetch-page', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url })
-    });
+    try {
+        const res = await fetch('/fetch-page', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Request failed');
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Request failed');
+        }
+
+        const blob = await res.blob();
+        window._fetchedPdfBlob = blob;
+        viewState.lastFetchedUrl = url;
+        exportPdfBtn.disabled = false;
+        document.getElementById("add-to-list-btn").disabled = false;
+        fetchStatus.textContent = 'Page fetched! Ready to export.';
+
+    } catch (err) {
+        fetchStatus.textContent = 'Error: ' + err.message;
+    } finally {
+        fetchBtn.disabled = false;
     }
-
-    const blob = await res.blob();
-    window._fetchedPdfBlob = blob;
-    exportPdfBtn.disabled = false;
-    fetchStatus.textContent = 'Page fetched! Ready to export.';
-
-  } catch (err) {
-    fetchStatus.textContent = 'Error: ' + err.message;
-  } finally {
-    fetchBtn.disabled = false;
-  }
 });
 
 exportPdfBtn.addEventListener('click', () => {
-  if (!window._fetchedPdfBlob) return;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(window._fetchedPdfBlob);
-  const filename = fetchUrlInput.value.replace(/https?:\/\//, '').replace(/[^a-z0-9]/gi, '_').slice(0, 50) + '.pdf';
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-  fetchStatus.textContent = 'PDF saved!';
+    if (!window._fetchedPdfBlob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(window._fetchedPdfBlob);
+    const filename = fetchUrlInput.value.replace(/https?:\/\//, '').replace(/[^a-z0-9]/gi, '_').slice(0, 50) + '.pdf';
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    fetchStatus.textContent = 'PDF exported!';
+});
+
+document.getElementById("add-to-list-btn").addEventListener("click", () => {
+    if (!window._fetchedPdfBlob) return;
+
+    const filename = fetchUrlInput.value
+        .replace(/https?:\/\//, '')
+        .replace(/[^a-z0-9]/gi, '_')
+        .slice(0, 50) + '.pdf';
+
+    //dupe check
+    const exists = fileInput.some(f => f.name === filename);
+    if (exists) {
+        fetchStatus.textContent = "Error: Already added to file list.";
+        document.getElementById("add-to-list-btn").disabled = true;
+        return;
+    }
+
+    const entry = {
+        id: crypto.randomUUID(),
+        type: "uploaded",
+        name: filename,
+        file: new File([window._fetchedPdfBlob], filename, { type: "application/pdf" }),
+    };
+
+    fileInput.push(entry);
+    fileStates.push({
+        pdf: null,
+        text: null,
+        page: 1,
+        line: -1,
+        scroll: 0,
+        pdfVisible: true
+    });
+    const newIndex = fileInput.length - 1;
+    setCurrFileIndex(newIndex);
+    const dropdown = document.getElementById("file-dropdown");
+    dropdown.value = newIndex;
+    showFilesList();
+    highlightSelectedFile();
+    updateButtons();
+    loadFileCallback(entry);
+    fetchStatus.textContent = 'PDF saved!';
+    document.getElementById("add-to-list-btn").disabled = true;
 });
