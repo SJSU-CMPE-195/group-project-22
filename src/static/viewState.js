@@ -22,7 +22,9 @@ export function initFileStates(fileInput) {
             page: 1,
             line: -1,
             scroll: 0,
-            pdfVisible: true
+            pdfVisible: true,
+            relevance: [],
+            originLine: null
         });
     }
 }

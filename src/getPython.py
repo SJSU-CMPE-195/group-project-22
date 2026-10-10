@@ -4,6 +4,7 @@ from pypdf import PdfReader
 import subprocess
 import time
 import httpx
+import unicodedata
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 
@@ -147,7 +148,6 @@ def chunk_text(text, chunk_size=1000, overlap=200):
 
     return chunks
 
-
 def getRelevantText(line, fileName):
     print("Sending step In prompt")
     document = PdfReader("./files/default/" + fileName)
@@ -192,6 +192,8 @@ def getRelevantText(line, fileName):
         for pl in page_lines:
             print(f"PAGE LINE: [{pl}]")
         for snippet_line in snippet_lines:
+            if len(snippet_line) < 20:
+                continue
             print(f"COMPARE snippet=[{snippet_line}] WITH PAGE LINE(S)")
             if snippet_line in page_lines:
                 print("\n*** MATCH FOUND ***")

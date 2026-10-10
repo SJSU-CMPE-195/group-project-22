@@ -15,18 +15,31 @@ const pdfContainer = document.querySelector(".viewer-left");
 let nextLineBtn = document.getElementById("NextLine");
 let nextPageBtn = document.getElementById("nextPage");
 var textDiv = document.getElementById("textDiv");
-var stepInText;
+let activeController = null;
 
 document.getElementById("stepIn").addEventListener("click", stepIn);
 document.getElementById("stepOut").addEventListener("click", stepOut);
 export async function stepIn() {
+    const cancelBtn = document.getElementById("cancelStepIn");
+    cancelBtn.classList.remove("hidden");
     const stepInBtn = document.getElementById("stepIn");
     stepInBtn.disabled = true;
+    showLoadingOverlay("Stepping in");
     document.querySelector(".stepin-text").style.opacity = "0";
     document.querySelector(".stepin-spinner").classList.remove("hidden");
+    activeController = new AbortController();
+    const signal = activeController.signal;
     try {
         fileStates[currFileIndex].originLine = viewState.numTimes;
         const prevLine = viewState.numTimes;
+        if (
+            prevLine == null ||
+            prevLine < 0 ||
+            prevLine >= textDiv.childNodes.length
+        ) {
+            alert("Cannot step in: the selected line does not exist in this file.");
+            return;
+        }
         var stepInLine = textDiv.childNodes[prevLine].innerText
         if (currFileIndex < fileInput.length - 1) {
             const nextIndex = currFileIndex + 1;
@@ -36,24 +49,38 @@ export async function stepIn() {
                 console.error("No file at index", nextIndex);
                 return;
             }
+
             await loadFile(nextFile);
             highlightSelectedFile();
+
             const response = await fetch("/stepIn", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     line: stepInLine,
                     fileName: fileInput[currFileIndex].name
-                })
+                }),
+                signal
             });
             const resultObj = await response.json();
-            if (resultObj.text.toLowerCase().includes("no relevant")) {
-                alert("No relevant text found.");
+            console.log("pageNum:", resultObj.pageNum);
+            console.log("pageText:", resultObj.pageText);
+            console.log("relevantText:", resultObj.text);
+
+            if (!resultObj || typeof resultObj.text !== "string") {
+                alert("Invalid response from server.");
                 return;
             }
-            const backendPageText = resultObj.pageText;
-            const correctPage = await findPageByText(backendPageText);
-            if (correctPage === -1) {
+
+            if (resultObj.text.toLowerCase().includes("no mention")) {
+                alert(resultObj.text);
+                return;
+            }
+
+            //const backendPageText = resultObj.pageText;
+            const correctPage = resultObj.pageNum;
+            //const correctPage = await findPageByText(backendPageText);
+            if (correctPage === null || correctPage < 0) {
                 alert("Relevant text found, but page could not be matched");
                 return;
             }
@@ -63,6 +90,7 @@ export async function stepIn() {
                 .filter(l => l.length > 0);
             fileStates[currFileIndex].line = 0;
             fileStates[currFileIndex].scroll = 0;
+
             await navToPage(correctPage, {
                 restoreHighlight: false,
                 resetLine: true
@@ -85,6 +113,7 @@ export async function stepIn() {
                         break;
                     }
                 }
+
                 if (matchIndex >= 0) break;
             }
             if (matchIndex >= 0) {
@@ -95,10 +124,35 @@ export async function stepIn() {
             }
         }
         updateButtons();
-    } finally {
-        stepInBtn.disabled = false;
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log("Step-in operation was aborted.");
+        } else {
+            console.error("Error during step-in:", error);
+            alert("An error occurred during step-in. Please check the console for details.");
+        }
+    }
+    finally {
+        activeController = null;
+        stepInBtn.disabled = true;
         document.querySelector(".stepin-text").style.opacity = "1";
         document.querySelector(".stepin-spinner").classList.add("hidden");
+        cancelBtn.classList.add("hidden");
+        hideLoadingOverlay();
+    }
+}
+
+document.getElementById("cancelStepIn").addEventListener("click", cancelStepIn);
+function cancelStepIn() {
+    if (!activeController) return;
+
+    if (activeController) {
+        activeController.abort();
+        activeController = null;
+        document.getElementById("stepIn").disabled = false;
+        document.querySelector(".stepin-text").style.opacity = "1";
+        document.querySelector(".stepin-spinner").classList.add("hidden");
+        document.getElementById("cancelStepIn").classList.add("hidden");
     }
 }
 
@@ -111,9 +165,38 @@ export async function stepOut() {
         setCurrFileIndex(prevIndex);
         const prevFile = fileInput[prevIndex];
         await loadFile(prevFile, { restoreHighlight: true });
+        await new Promise(resolve => setTimeout(resolve, 100));
         highlightSelectedFile();
     }
     updateButtons();
+}
+
+function showLoadingOverlay(message = "Loading") {
+    document.getElementById("interaction-blocker").classList.remove("hidden");
+
+    const indicator = document.getElementById("loading-indicator");
+    const text = document.getElementById("loading-text");
+    text.textContent = message;
+
+    indicator.classList.remove("hidden");
+}
+
+function hideLoadingOverlay() {
+    document.getElementById("interaction-blocker").classList.add("hidden");
+    document.getElementById("loading-indicator").classList.add("hidden");
+}
+
+
+function setViewerCursor(cursorStyle) {
+    const viewer = document.getElementById("viewer-container");
+    if (!viewer) return;
+    viewer.classList.remove(
+        "viewer-loading",
+        "viewer-default",
+        "viewer-highlight",
+        "viewer-blocked"
+    );
+    viewer.classList.add(`viewer-${cursorStyle}`);
 }
 
 async function getPageData(pdf, pageNum) {
@@ -122,32 +205,19 @@ async function getPageData(pdf, pageNum) {
     return { page, text };
 }
 
-async function findPageByText(backendPageText) {
-    const normalizedBackend = normalize(backendPageText);
-    const pdf = viewState.pdf;
-    const total = pdf.numPages;
-    for (let i = 1; i <= total; i++) {
-        const { text } = await getPageData(pdf, i);
-        const pageText = text.items
-            .map(item => item.str.trim())
-            .filter(str => str.length > 0)
-            .join(" ");
-        const normalizedPage = normalize(pageText);
-        if (normalizedPage.includes(normalizedBackend) ||
-            normalizedBackend.includes(normalizedPage)) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 function markRelevantLines(lines) {
     const normalized = lines.map(normalize);
+
     const textNodes = textDiv.childNodes;
+
     for (let i = 0; i < textNodes.length; i++) {
         const nodeText = normalize(textNodes[i].innerText);
+
         for (let j = 0; j < normalized.length; j++) {
-            if (nodeText.includes(normalized[j]) || normalized[j].includes(nodeText)) {
+            if (
+                nodeText.includes(normalized[j]) ||
+                normalized[j].includes(nodeText)
+            ) {
                 textNodes[i].classList.add("relevant-line");
                 break;
             }
@@ -159,6 +229,7 @@ function clearRelevantLines() {
     const textNodes = textDiv.childNodes;
     for (let node of textNodes) {
         node.classList.remove("relevant-line");
+        node.classList.remove("highlight-overlap");
     }
 }
 
@@ -170,33 +241,11 @@ function normalize(str) {
         .toLowerCase();
 }
 
-async function getRelevantSection(stepLine, file) {
-    const obj = { line: stepLine, fileName: fileInput[currFileIndex].name };
-    const response = await fetch("/stepIn", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(obj),
-    });
-    const res = await response.json()
-    const string = JSON.parse(res);
-    alert("Stepped in with: " + stepLine + "Relevant Text from this file: " + file + "\n" + string)
-    // get the page.
-    // highlight any that start with, what we have and end with
-    const arr = string.trim().split("\n");
-    for (let pageNum = 1; pageNum <= viewState.totalPages; pageNum++) {
-        const { text: pageText } = await getPageData(viewState.pdf, pageNum);
-        for (let line of arr) {
-            if (pageText.items.some(item => item.str.trim() === line.trim())) {
-                return pageNum;
-            }
-        }
-    }
-    return null; // No relevant page found
-}
-
 export async function loadFile(input, { restoreHighlight = false } = {}) {
+    console.log("Blocker active at loadFile:",
+        !document.getElementById("interaction-blocker").classList.contains("hidden")
+    );
+
     if (!input) return;
     let params = {};
 
@@ -261,20 +310,41 @@ export async function renderPage(pageNum, restoreHighlight = false) {
     page.render({ canvasContext: context, viewport });
     updateButtons();
     if (state.line >= 0 && restoreHighlight) {
-        highlightLine(state.line, true);
+        const lines = textDiv.childNodes;
+        if (state.line < lines.length) {
+            highlightLine(state.line, true);
+        } else {
+            state.line = -1;
+            updateViewState({ numTimes: -1 });
+        }
     }
 }
 
 function highlightLine(lineIndex, silent = false) {
     const lines = textDiv.childNodes;
-    if (lineIndex < 0 || lineIndex >= lines.length) return;
-    if (viewState.numTimes >= 0 && viewState.numTimes < lines.length) {
-        lines[viewState.numTimes].classList.remove("nav-highlight");
+    if (!lines || lines.length === 0) {
+        console.warn("No lines available to highlight.");
+        return;
     }
-    lines[lineIndex].classList.add("nav-highlight");
+    if (lineIndex < 0 || lineIndex >= lines.length) {
+        console.warn("Line index out of bounds:", lineIndex);
+        return;
+    }
+    if (viewState.numTimes >= 0 && viewState.numTimes < lines.length && viewState.numTimes !== lineIndex) {
+        lines[viewState.numTimes].classList.remove("nav-highlight", "highlight-overlap");
+    }
+    const targetLine = lines[lineIndex];
+    if (!targetLine) {
+        console.warn("No line found at index:", lineIndex);
+        return;
+    }
+    targetLine.classList.add("nav-highlight");
+    if (targetLine.classList.contains("relevant-line")) {
+        targetLine.classList.add("highlight-overlap");
+    }
     updateViewState({ numTimes: lineIndex });
     if (!silent) {
-        lines[lineIndex].scrollIntoView({ behavior: "smooth", block: "center" });
+        targetLine.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 }
 
@@ -354,7 +424,12 @@ async function getWebPage() {
     const btn = document.getElementById("urlContext");
     const spinner = btn.querySelector(".spinner");
     const text = btn.querySelector(".btn-text");
+    const cancelBtn = document.getElementById("cancelStepIn");
+    cancelBtn.classList.remove("hidden");
+    activeController = new AbortController();
+    const signal = activeController.signal;
     btn.disabled = true;
+    showLoadingOverlay("Fetching webpage");
     spinner.classList.remove("hidden");
     text.style.opacity = "0.4";
     try {
@@ -373,15 +448,25 @@ async function getWebPage() {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({ url: lineTrimmed }),
-
+            signal
         });
         const resultObj = await response.json();
         // generate the pdf and load the file.
         alert("link:" + resultObj.link + "text: " + resultObj.text)
-    } finally {
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log("Get webpage operation was aborted.");
+            return;
+        }
+        console.error("Error during getWebPage:", error);
+    }
+    finally {
+        activeController = null;
+        cancelBtn.classList.add("hidden");
         btn.disabled = false;
         spinner.classList.add("hidden");
         text.style.opacity = "1";
+        hideLoadingOverlay();
     }
 }
 
@@ -471,7 +556,12 @@ document.addEventListener("DOMContentLoaded", () => {
         pdfContainer.style.display = hidden ? "block" : "none";
         viewer.classList.toggle("single-column", !hidden);
     });
-    loadFile(fileInput[currFileIndex]);
+    const waitForPdf = setInterval(() => {
+        if (fileInput && fileInput.length > 0) {
+            clearInterval(waitForPdf);
+            loadFile(fileInput[currFileIndex]);
+        }
+    }, 50);
 });
 
 document.getElementById("themeToggle").addEventListener("click", () => {

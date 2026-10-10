@@ -15,14 +15,39 @@ export function setCurrFileIndex(value) {
 }
 const filesPanel = document.getElementById("fileUploadPanel");
 const openUploadBtn = document.getElementById("openUploadBtn");
-const defaultFiles = ["StanfordPaper1.pdf", "ConstitutionWords.pdf", "constitution.pdf", "holmes.pdf"];
-export let fileInput = defaultFiles.map(name => ({
-    id: crypto.randomUUID(),
-    type: "default",
-    name
-})); // Initialize with default files
-initFileStates(fileInput);
+export let fileInput = []; // Initialize fileInput as an empty array
+const systemDefaults = new Set([
+    "StanfordPaper1.pdf",
+    "ConstitutionWords.pdf",
+    "constitution.pdf",
+    "holmes.pdf"
+]);
 
+async function deleteFile(fileName) {
+    if (systemDefaults.has(fileName)) {
+        alert(`Cannot delete system default file: ${fileName}`);
+        return;
+    }
+    await fetch("/delete-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: fileName })
+    });
+}
+
+async function loadDefaultFiles() {
+    const response = await fetch("/list-pdfs");
+    const data = await response.json();
+    fileInput = data.files.map((fileName) => ({
+        id: crypto.randomUUID(),
+        type: "default",
+        name: fileName,
+        file: null
+    }));
+    initFileStates(fileInput);
+    showFilesList();
+}
+loadDefaultFiles();
 function openUpload() {
     filesPanel.classList.add("open");
     openUploadBtn.classList.add("hidden");
@@ -53,6 +78,17 @@ function initToggle() {
     setupZIndex();
     showFilesList();
     setupListEvents();
+}
+
+async function uploadToBackend(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("name", file.name);
+    const response = await fetch("/upload-pdf", {
+        method: "POST",
+        body: formData
+    });
+    return await response.json();
 }
 
 export function showFilesList() {
@@ -99,7 +135,7 @@ document.getElementById("file-dropdown").addEventListener("change", (e) => {
 
 function setupListEvents() {
     const list = document.getElementById("filesList");
-    
+
     list.addEventListener("click", (e) => {
         const item = e.target.closest(".file-item");
         if (!item) return;
@@ -161,7 +197,7 @@ function setupListEvents() {
             return;
         }
         const [movedFile] = fileInput.splice(oldIndex, 1);
-        fileInput.splice(newIndex, 0 , movedFile);
+        fileInput.splice(newIndex, 0, movedFile);
         const [movedState] = fileStates.splice(oldIndex, 1);
         fileStates.splice(newIndex, 0, movedState);
         setCurrFileIndex(fileInput.findIndex(f => f.id === activeId));
@@ -201,9 +237,15 @@ function getDragAfterElement(container, y) {
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-function removeFile(id) {
+async function removeFile(id) {
     const index = fileInput.findIndex(f => f.id === id);
     if (index === -1) return;
+    const fileName = fileInput[index].name;
+    if (systemDefaults.has(fileName)) {
+        alert(`Cannot delete system default file: ${fileName}`);
+        return;
+    }
+    await deleteFile(fileName);
     fileInput.splice(index, 1);
     fileStates.splice(index, 1);
     if (fileInput.length === 0) {
@@ -231,7 +273,7 @@ function clearViewer() {
     }
 }
 
-function handleFileSelect(event) {
+async function handleFileSelect(event) {
     event.preventDefault();
     const files = event.dataTransfer ? event.dataTransfer.files : event.target.files;
     for (let i = 0; i < files.length; i++) {
@@ -242,11 +284,16 @@ function handleFileSelect(event) {
             continue;
         }
         const id = crypto.randomUUID();
+        const backendResponse = await uploadToBackend(file);
+        if (!backendResponse.success) {
+            alert(`Failed to upload "${file.name}" to the backend.`);
+            continue;
+        }
         fileInput.push({
             id,
-            type: "uploaded",
-            name: files[i].name,
-            file,
+            type: "default",
+            name: file.name,
+            file: null
         });
         fileStates.push({
             id,
@@ -255,13 +302,15 @@ function handleFileSelect(event) {
             page: -1,
             line: -1,
             scroll: 0,
-            pdfVisible: true
+            pdfVisible: true,
+            relevance: [],
+            originLine: null
         });
     }
     showFilesList();
 }
 
-function setupFileUpload() {
+async function setupFileUpload() {
     const dropArea = document.getElementById("dropArea");
     const fileInputElem = document.getElementById("fileInput");
     dropArea.addEventListener("click", () => fileInputElem.click());
@@ -270,13 +319,18 @@ function setupFileUpload() {
     fileInputElem.addEventListener("change", handleFileSelect);
 }
 
-function loadFileByIndex(index) {
+export async function loadFileByIndex(index) {
+    console.log("LOAD-BY-INDEX: index =", index);
+    console.log("LOAD-BY-INDEX: entry =", fileInput[index]);
+
     const entry = fileInput[index];
     if (!entry) return;
     if (entry.file instanceof File && entry.type !== "uploaded") {
         entry.type = "uploaded";
     }
-    currFileIndex = index;
+    currFileIndex = index;    
+    console.log("LOAD-BY-INDEX: currFileIndex AFTER SET =", currFileIndex);
+
     if (!fileStates[index]) {
         fileStates[index] = {
             id: entry.id,
@@ -285,7 +339,9 @@ function loadFileByIndex(index) {
             page: 1,
             line: -1,
             scroll: 0,
-            pdfVisible: true
+            pdfVisible: true,
+            relevance: [],
+            originLine: null
         };
     }
 
@@ -295,7 +351,7 @@ function loadFileByIndex(index) {
     if (typeof resetViewCallback === "function") {
         resetViewCallback(); // Reset the view state when a new file is selected
     }
-    loadFileCallback(entry);
+    await loadFileCallback(entry);
     highlightSelectedFile();
     console.log(`Loading file: ${entry.name}`);
 

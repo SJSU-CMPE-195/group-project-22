@@ -1,3 +1,5 @@
+import os
+
 from flask import (
     Flask,
     json,
@@ -68,14 +70,31 @@ def getW():
 # store the step in that the user did.
 def stepIn():
     data = request.get_json()
+    print("BACKEND STEP-IN: raw data =", data, flush=True)
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
     line = data.get("line")
     fileName = data.get("fileName")
+    print("BACKEND STEP-IN: fileName =", fileName, flush=True)
+    print("BACKEND STEP-IN: line =", line, flush=True)
+    if line is None or fileName is None:
+        return jsonify({"error": "Missing 'line' or 'fileName' in request"}), 400
     # res = gP.getRelevantText(line, fileName)
-    relevant_text, pageNum, page_lines = gP.getRelevantText(line, fileName)
+    try:
+        print("BACKEND STEP-IN: calling getRelevantText on file =", fileName, flush=True)
+        relevant_text, pageNum, page_lines = gP.getRelevantText(line, fileName)
+        print("BACKEND STEP-IN: relevant_text snippet =", relevant_text[:200], flush=True)
+        print("BACKEND STEP-IN: pageNum =", pageNum, flush=True)
+        print("BACKEND STEP-IN: first page_lines snippet =", "\n".join(page_lines[:10]), flush=True)
+
+    except Exception as e:
+        print(f"Error in getRelevantText: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
     backend_page_text = "\n".join(page_lines)
     # obj = {"text": res[0], "pageNum": res[1]}
     # print(json.dumps(obj))
-    return jsonify({"text": relevant_text, "pageText": backend_page_text})
+    return jsonify({"text": relevant_text, "pageText": backend_page_text, "pageNum": pageNum})
 
 
 @app.route("/fetch-page", methods=["POST"])
@@ -268,6 +287,41 @@ def clear_page_collection():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/upload-pdf", methods=["POST"])
+def upload_pdf():
+    try:
+        print("FILES: ", request.files, flush=True)
+        print("FORM: ", request.form, flush=True)
+        file = request.files.get("file")
+        name = request.form.get("name")
+        if not file or not name:
+            return jsonify({"error": "File or name not provided"}), 400
+        save_path = os.path.join("files", "default", name)
+        os.makedirs(os.path.join("files", "default"), exist_ok=True)
+        file.save(save_path)
+        return jsonify({"success": True, "message": f"File saved as {save_path}"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/list-pdfs", methods=["GET"])
+def list_pdfs():
+    folder_path = os.path.join("files", "default")
+    files = [f for f in os.listdir(folder_path) if f.lower().endswith(".pdf")]
+    return jsonify({"files": files})
+
+@app.route("/delete-pdf", methods=["POST"])
+def delete_pdf():
+    name = request.json.get("name")
+    if not name:
+        return jsonify({"error": "No file name provided"}), 400
+    file_path = os.path.join("files", "default", name)
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File does not exist"}), 404
+    try:
+        os.remove(file_path)
+        return jsonify({"success": True, "message": f"File {name} deleted"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     gP.ensure_ollama_running()

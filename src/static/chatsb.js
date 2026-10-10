@@ -1,6 +1,6 @@
 import { getCurrentPageText } from "./view.js";
-import { updateButtons, viewState, fileStates } from "./viewState.js";
-import { setCurrFileIndex, fileInput, showFilesList, loadFileCallback, highlightSelectedFile } from "./filepanelupload.js";
+import { updateButtons, viewState, fileStates, updateViewState } from "./viewState.js";
+import { setCurrFileIndex, fileInput, showFilesList, highlightSelectedFile, currFileIndex, loadFileByIndex } from "./filepanelupload.js";
 
 const sidebar = document.getElementById("chatSidebar");
 const openChatBtn = document.getElementById("openChatBtn");
@@ -184,14 +184,14 @@ async function sendMessage() {
                     text + `: Current Page Added to Context (${result.chunks} chunks)`
                 )
             );
-            
+
             input.value = "";
 
         } catch (err) {
-            console.error("chromaDB error:",err);
+            console.error("chromaDB error:", err);
             sendOutput("Error adding page to ChromaDB: " + err.message);
         }
-            
+
         //chatHistory.push({ role: "user", content: currentPageText });
         //messages.prepend(createMsg("message", text + ": Current Page Added to Context"));
 
@@ -314,8 +314,8 @@ sendBtn.onclick = function () {
 };
 //test.onclick = sendOuput;
 
-input.addEventListener("keypress", function(e){
-    if(e.key === "Enter" && !activeChatController) {
+input.addEventListener("keypress", function (e) {
+    if (e.key === "Enter" && !activeChatController) {
         sendMessage();
     }
 });
@@ -382,7 +382,7 @@ fetchBtn.addEventListener('click', async () => {
 
         const blob = await res.blob();
         window._fetchedPdfBlob = blob;
-        viewState.lastFetchedUrl = url;
+
         exportPdfBtn.disabled = false;
         document.getElementById("add-to-list-btn").disabled = false;
         fetchStatus.textContent = 'Page fetched! Ready to export.';
@@ -395,7 +395,8 @@ fetchBtn.addEventListener('click', async () => {
 });
 
 exportPdfBtn.addEventListener('click', () => {
-    if (!window._fetchedPdfBlob) return;
+    if (!window._fetchedPdfBlob)
+        return;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(window._fetchedPdfBlob);
     const filename = fetchUrlInput.value.replace(/https?:\/\//, '').replace(/[^a-z0-9]/gi, '_').slice(0, 50) + '.pdf';
@@ -405,8 +406,11 @@ exportPdfBtn.addEventListener('click', () => {
     fetchStatus.textContent = 'PDF exported!';
 });
 
-document.getElementById("add-to-list-btn").addEventListener("click", () => {
-    if (!window._fetchedPdfBlob) return;
+document.getElementById("add-to-list-btn").addEventListener("click", async () => {
+    if (!window._fetchedPdfBlob) {
+        fetchStatus.textContent = 'No fetched PDF to add.';
+        return;
+    }
 
     const filename = fetchUrlInput.value
         .replace(/https?:\/\//, '')
@@ -421,30 +425,58 @@ document.getElementById("add-to-list-btn").addEventListener("click", () => {
         return;
     }
 
-    const entry = {
-        id: crypto.randomUUID(),
-        type: "uploaded",
-        name: filename,
-        file: new File([window._fetchedPdfBlob], filename, { type: "application/pdf" }),
-    };
+    try {
+        const formData = new FormData();
+        const fileObject = new File([window._fetchedPdfBlob], filename, { type: 'application/pdf' });
+        formData.append("file", fileObject);
+        formData.append("name", filename);
 
-    fileInput.push(entry);
-    fileStates.push({
-        pdf: null,
-        text: null,
-        page: 1,
-        line: -1,
-        scroll: 0,
-        pdfVisible: true
-    });
-    const newIndex = fileInput.length - 1;
-    setCurrFileIndex(newIndex);
-    const dropdown = document.getElementById("file-dropdown");
-    dropdown.value = newIndex;
-    showFilesList();
-    highlightSelectedFile();
-    updateButtons();
-    loadFileCallback(entry);
-    fetchStatus.textContent = 'PDF saved!';
-    document.getElementById("add-to-list-btn").disabled = true;
+        const uploadResponse = await fetch("http://127.0.0.1:5000/upload-pdf", {
+            method: "POST",
+            body: formData
+        });
+
+        if (!uploadResponse.ok) {
+            const err = await uploadResponse.json();
+            fetchStatus.textContent = 'Error uploading PDF: ' + (err.error || 'Unknown error');
+            return;
+        }
+
+        const entry = {
+            id: crypto.randomUUID(),
+            type: "default",
+            name: filename,
+            file: null
+        };
+
+        fileInput.push(entry);
+        fileStates.push({
+            pdf: null,
+            text: null,
+            page: 1,
+            line: -1,
+            scroll: 0,
+            pdfVisible: true,
+            relevance: [],
+            originLine: null
+        });
+
+        const newIndex = fileInput.length - 1;
+        setCurrFileIndex(newIndex);
+        updateViewState({ currentFile: fileInput[newIndex] });
+        const dropdown = document.getElementById("file-dropdown");
+        dropdown.value = newIndex;
+        showFilesList();
+        highlightSelectedFile();
+        updateButtons();
+        console.log("ADD-TO-LIST: newIndex =", newIndex);
+        console.log("ADD-TO-LIST: entry =", entry);
+        console.log("ADD-TO-LIST: currFileIndex BEFORE =", currFileIndex);
+        console.log("ADD-TO-LIST: fileInput =", fileInput.map(f => f.name));
+        loadFileByIndex(newIndex);
+        fetchStatus.textContent = 'PDF saved!';
+        document.getElementById("add-to-list-btn").disabled = true;
+    } catch (err) {
+        fetchStatus.textContent = 'Error uploading PDF: ' + err.message;
+    }
 });

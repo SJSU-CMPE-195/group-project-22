@@ -12,19 +12,26 @@
 </head>
 
 <body>
+    <!-- Interaction Blocker and Loading Indicator -->
+    <div id="interaction-blocker" class="hidden"></div>
+    <div id="loading-indicator" class="hidden">
+        <p id="loading-text" class="thinking-message">Loading</p>
+        <button id="cancelStepIn" class="themed-btn cancel-btn hidden">Cancel Search</button>
+    </div>
+
     <!-- Top Header -->
     <div class="topbar">
         <div class="topbar-title">LearningDebugger</div>
-        
+
         <div class="viewer-buttons">
             <select id="file-dropdown"></select>
             <div class="cluster line-cluster">
-            <button id="NextLine">Next Line</button>
-            <button id="prevLine">Prev Line</button>
+                <button id="NextLine">Next Line</button>
+                <button id="prevLine">Prev Line</button>
             </div>
             <div class="cluster page-cluster">
-            <button id="nextPage">Next Page</button>
-            <button id="prevPage">Prev Page</button>
+                <button id="nextPage">Next Page</button>
+                <button id="prevPage">Prev Page</button>
             </div>
             <button id="urlContext" class="loading-btn">
                 <span class="btn-text">Find Context</span>
@@ -32,11 +39,11 @@
             </button>
             <button id="togglePdf">Toggle PDF</button>
             <div class="cluster step-cluster">
-            <button id="stepIn">
-                <span class="stepin-text">Step In</span>
-                <span class="stepin-spinner hidden"></span>
-            </button>
-            <button id="stepOut">Step Out</button>
+                <button id="stepIn">
+                    <span class="stepin-text">Step In</span>
+                    <span class="stepin-spinner hidden"></span>
+                </button>
+                <button id="stepOut">Step Out</button>
             </div>
             <button id="themeToggle" class="icon-btn theme-toggle-btn">
                 <span class="sun">☀️</span>
@@ -101,26 +108,26 @@
 
             <div class="chat-messages" id="chatMessages"></div>
 
-                <div class="chat-input">
-                    <input type="text" id="chatInput" placeholder="Type a message..." />
-                    <button id="sendBtn">Send</button>
-                </div>
+            <div class="chat-input">
+                <input type="text" id="chatInput" placeholder="Type a message..." />
+                <button id="sendBtn">Send</button>
             </div>
         </div>
+    </div>
 
-        <!-- Floating buttons -->
-        <button class="chat-fab" id="openChatBtn">Chat</button>
-        <button class="upload-fab" id="openUploadBtn">Select Files</button>
+    <!-- Floating buttons -->
+    <button class="chat-fab" id="openChatBtn">Chat</button>
+    <button class="upload-fab" id="openUploadBtn">Select Files</button>
 
-        <div id="pdf-source"
-            style="position:absolute; left:-9999px; width:800px; background:#fff; color:#000; padding:20px;"></div>
-        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <div id="pdf-source"
+        style="position:absolute; left:-9999px; width:800px; background:#fff; color:#000; padding:20px;"></div>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
 
 
-        <script type="module" src="{{ url_for('static', filename='filepanelupload.js') }}"></script>
-        <script type="module" src="{{ url_for('static', filename='view.js') }}"></script>
-        <script type="module" src="{{ url_for('static', filename='chatsb.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='filepanelupload.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='view.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='chatsb.js') }}"></script>
 </body>
 
 </html>
