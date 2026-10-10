@@ -1,6 +1,7 @@
 from ollama import chat
 from ollama import ChatResponse
 from pypdf import PdfReader
+import chromadb
 import subprocess
 import time
 import httpx
@@ -147,8 +148,33 @@ def chunk_text(text, chunk_size=1000, overlap=200):
         start += chunk_size - overlap
 
     return chunks
-
+# Use this method to reset data in the step in collection
+"""def deleteStepIns():
+    client = chromadb.PersistentClient("./")
+    client.delete_collection(name="prevStepIns")"""
+    
 def getRelevantText(line, fileName):
+    # read the chromadb database we stored in the current directory
+    client = chromadb.PersistentClient("./")
+    prevStepInColl = client.get_or_create_collection(name="prevStepIns")
+    alreadyIndb = False
+    prevLinesString = ""
+    # Get the relevant previous step ins.
+    if(prevStepInColl.count() != 0):
+        prevLinesDocs = prevStepInColl.query(query_texts=[line], include=["documents"])
+        # going from [[]] -> []
+        prevLineList = prevLinesDocs["documents"][0]
+        for s in prevLineList:
+            if line in prevLineList:
+                alreadyIndb = True
+            prevLinesString += s + "\n"
+    # add the new line to chromadb for future step ins.
+    newId = ["id" + str(prevStepInColl.count() + 1)]
+    if(not alreadyIndb):
+        prevStepInColl.add(
+        ids=newId,
+        documents=line)
+    print(prevStepInColl.get(include=["documents"]))
     print("Sending step In prompt")
     document = PdfReader("./files/default/" + fileName)
     length = len(document.pages)
@@ -163,9 +189,8 @@ def getRelevantText(line, fileName):
     if not text.strip():
         print("Debug: No extractable text in pdf")
         return "No extractable text in Pdf.", None, []
-
     response: ChatResponse = chat(
-        model="llama3.1:8b",
+        model="gemma4:31b-cloud",
         messages=[
             {
                 "role": "user",
