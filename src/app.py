@@ -93,8 +93,8 @@ def fetch_page():
                 viewport={'width': 1280, 'height': 800}
             )
             page = context.new_page()
-            page.goto(url, wait_until='networkidle')
-            page.wait_for_timeout(3000)
+            page.goto(url, wait_until='domcontentloaded', timeout=60000)
+            page.wait_for_timeout(2000)
             pdf_bytes = page.pdf(
                 format='A4',
                 print_background=True,
