@@ -39,12 +39,10 @@ def initial():
     global chromaClient
     global chromaCollection
     global page_collection
-    global prevStepIn_collection
     if chromaClient is None:
         chromaClient = chromadb.PersistentClient(path="./")
         chromaCollection = chromaClient.get_or_create_collection(name="collection")
         page_collection = chromaClient.get_or_create_collection(name="page_collection")
-        prevStepIn_collection = chromaClient.get_or_create_collection(name="prevStepIns")
     return render_template("app.html")
 
 
@@ -55,6 +53,13 @@ def getW():
     data = request.get_json()
     response = data.get("url", "")
     list = gP.getPrompt(response)
+    # jsonObj = {"link": list[0], "text": list[1]}
+    # add this webpages text for future requests.
+    """chromaCollection.add (
+        ids={json.dumps(response)},
+        documents={json.dumps(jsonObj)},
+    )"""
+
     jsonResult = jsonify({"link": list[0], "text": list[1]})
     return jsonResult
 
@@ -73,40 +78,39 @@ def stepIn():
     return jsonify({"text": relevant_text, "pageText": backend_page_text})
 
 
-@app.route("/fetch-page", methods=["POST"])
+@app.route("/fetch-page", methods=['POST'])
 def fetch_page():
     data = request.get_json()
-    url = data.get("url", "").strip()
-    if not url:
-        return jsonify({"error": "No URL provided"}), 400
+    url = data.get('url', '').strip()
+    if not url or not url.startswith('http'):
+        return jsonify({'error': 'Invalid URL'}), 400
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        resp = req.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(resp.text, "html.parser")
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                viewport={'width': 1280, 'height': 800}
+            )
+            page = context.new_page()
+            page.goto(url, wait_until='networkidle')
+            page.wait_for_timeout(3000)
+            pdf_bytes = page.pdf(
+                format='A4',
+                print_background=True,
+                margin={'top': '0', 'bottom': '0', 'left': '0', 'right': '0'},
+                scale=0.8
+            )
+            browser.close()
 
-        for tag in soup(["script", "style", "nav", "footer"]):
-            tag.decompose()
-        text = soup.get_text(separator="\n").strip()
-
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=11)
-        text = text.encode("latin-1", "ignore").decode("latin-1")
-        pdf.multi_cell(0, 7, text)
-
-        raw = pdf.output(dest="S")
-        pdf_bytes = (
-            bytes(raw) if isinstance(raw, (bytearray, bytes)) else raw.encode("latin-1")
-        )
         return send_file(
-            io.BytesIO(bytes(pdf_bytes)),
-            mimetype="application/pdf",
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
             as_attachment=True,
-            download_name="fetched-page.pdf",
+            download_name='fetched-page.pdf'
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({'error': str(e)}), 500
 
 @app.route("/chatMessage", methods=["POST"])
 def chat_message():
