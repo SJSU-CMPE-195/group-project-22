@@ -39,10 +39,12 @@ def initial():
     global chromaClient
     global chromaCollection
     global page_collection
+    global prevStepIn_collection
     if chromaClient is None:
         chromaClient = chromadb.PersistentClient(path="./")
         chromaCollection = chromaClient.get_or_create_collection(name="collection")
         page_collection = chromaClient.get_or_create_collection(name="page_collection")
+        prevStepIn_collection = chromaClient.get_or_create_collection(name="prevStepIns")
     return render_template("app.html")
 
 
@@ -53,13 +55,6 @@ def getW():
     data = request.get_json()
     response = data.get("url", "")
     list = gP.getPrompt(response)
-    # jsonObj = {"link": list[0], "text": list[1]}
-    # add this webpages text for future requests.
-    """chromaCollection.add (
-        ids={json.dumps(response)},
-        documents={json.dumps(jsonObj)},
-    )"""
-
     jsonResult = jsonify({"link": list[0], "text": list[1]})
     return jsonResult
 
