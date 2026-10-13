@@ -190,7 +190,7 @@ def getRelevantText(line, fileName):
         print("Debug: No extractable text in pdf")
         return "No extractable text in Pdf.", None, []
     response: ChatResponse = chat(
-        model="gemma4:31b-cloud",
+        model="llama3.1:8b",
         messages=[
             {
                 "role": "user",

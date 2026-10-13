@@ -9,8 +9,10 @@
     --panel-alt: #ffffff;
     --border: #ccc;
     --border-alt: #ddd;
-    --accent: #007bff;
-    --accent-hover: #0056b3;
+    --accent: #e7e7e7;
+    --accent-hover: #6ba5fc;
+    --fab-bg: #007bff;
+    --fab-hover: #0056b3;
     --highlight-hover: #e6f0ff;
     --highlight-active: #cce0ff;
     --highlight-selected: #b3d6ff;
@@ -27,10 +29,12 @@ body.dark {
     --panel-alt: #1e1e1e;
     --border: #3c3c3c;
     --border-alt: #4a4a4a;
-    --accent: #4a78ff;
+    --accent: #2c2c2c;
     --accent-hover: #335ee6;
+    --fab-bg: #4a78ff;
+    --fab-hover: #335ee6;
     --highlight-hover: rgba(255, 255, 255, 0.08);
-    --highlight-active: rgba(255, 255, 255, 0.12);
+    --highlight-active: rgba(59, 41, 41, 0.12);
     --highlight-selected: rgba(255, 255, 255, 0.18);
     --nav-highlight-bg: #ffff99;
     --nav-highlight-text: #000;
@@ -42,7 +46,7 @@ body.dark .chat-input button,
 body.dark .upload-fab,
 body.dark .chat-fab,
 body.dark .chat-option-item,
-.themed-btn {
+body.dark .themed-btn {
     color: #fff !important;
 }
 
@@ -131,9 +135,9 @@ body {
 
 .viewer-buttons button {
     padding: 6px 12px;
-    border: none;
+    border: 1px solid var(--border);
     background: var(--accent);
-    color: var(--panel-alt);
+    color: var(--text);
     cursor: pointer;
     border-radius: 4px;
 }
@@ -911,12 +915,12 @@ body.dark .relevant-line {
 
 .themed-btn {
     background: var(--accent);
-    color: var(--bg);
-    border: none;
+    color: var(--text);
+    border: 1px solid var(--border);
     padding: 8px 12px;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 .themed-btn:hover {
@@ -953,6 +957,7 @@ body.dark .relevant-line {
     border-radius: 0 !important;
 }
 
+/*
 .cluster>*:not(:last-child)::after {
     content: "";
     position: absolute;
@@ -962,6 +967,7 @@ body.dark .relevant-line {
     width: 1px;
     background: var(--border);
 }
+*/
 
 body.dark .cluster>*:not(:last-child)::after {
     background: var(--border-alt);
@@ -1025,4 +1031,14 @@ body.dark .cancel-btn:hover {
 
 .viewer-blocked  {
     cursor: not-allowed;
+}
+
+.chat-fab,
+.upload-fab {
+    background: var(--fab-bg);
+}
+
+.chat-fab:hover,
+.upload-fab:hover {
+    background: var(--fab-hover);
 }
