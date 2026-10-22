@@ -127,12 +127,13 @@ def chat_message():
 
         # Query Chroma for relevant page context
         page_context = ""
+        sources =[]
 
         if page_collection.count() > 0:
             results = page_collection.query(
                 query_texts=[user_message],
                 n_results=min(4, page_collection.count()),
-                include=["documents", "distances"],
+                include=["documents", "distances", "metadatas"],
             )
             documents = results.get("documents", [[]])[
                 0
@@ -140,19 +141,39 @@ def chat_message():
             distances = results.get("distances", [[]])[
                 0
             ]  # Get the first list of distances
+            metadatas = results.get("metadatas", [[]])[
+                0
+            ]  # Get the first list of metadatas
 
             relevant_documents = []
             debug_chunks = []
 
-            for doc, dist in zip(documents, distances):
+            # Make sure metadata is always a dictionary
+            if metadata is None:
+                metadata = {}
+
+
+            for doc, dist, metadata in zip(documents, distances, metadatas):
                 if dist < 1.5:
                     relevant_documents.append(doc)
                     debug_chunks.append(
-                        {"type": "relevant", "distance": dist, "document": doc}
+                        {"type": "relevant", "distance": dist, "document": doc, "metadata": metadata}
                     )
+                    source = {
+                        "name": metadata.get(
+                            "source",
+                            "Current Page"
+                        ),
+                        "page": metadata.get("page"),
+                        "url": metadata.get("url"),
+                    }
+
+                    # Prevent duplicate sources
+                    if source not in sources:
+                        sources.append(source)
                 else:
                     debug_chunks.append(
-                        {"type": "unrelevant", "distance": dist, "document": doc}
+                        {"type": "unrelevant", "distance": dist, "document": doc, "metadata": metadata}
                     )
 
             page_context = "\n\n".join(relevant_documents)
@@ -189,10 +210,19 @@ def chat_message():
             stream = gP.getChatResponse(messages_for_model, model)
 
             for text in stream:
-                if not text or not text.strip():
+                if not text:
                     continue
 
                 yield text
+
+            # If there are sources, yield them at the end
+            for source in sources:
+
+                yield (
+                    "\n__SOURCE__"
+                    + json.dumps(source)
+                    + "\n"
+                )
 
         return Response(
             stream_with_context(generate()), content_type="text/plain; charset=utf-8"

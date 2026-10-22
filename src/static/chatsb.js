@@ -255,16 +255,157 @@ async function sendMessage() {
         // }
 
         let buffer = "";
+        let sources = [];
 
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
-            const chunkText = decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value, { stream: true });
 
-            fullReply += chunkText;
-            msg.innerHTML = cleanText(fullReply);
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+            for (const line of lines) {
+                // Debug Data
+                if (line.startsWith("__DEBUG__")) {
+
+                    try {
+                        const debug = JSON.parse(
+                            line.substring("__DEBUG__".length)
+                        );
+
+                        if (debug.type === "context_message") {
+                            console.log("--- Context Message ---");
+                            console.log(debug.content);
+                            console.log("-----------------------");
+                        } else {
+                            console.log("--- Chroma Chunk ---");
+                            console.log("Type:", debug.type);
+                            console.log("Distance:", debug.distance);
+                            console.log("Document:", debug.document);
+                            console.log("Metadata:", debug.metadata);
+                            console.log("--------------------");
+                        }
+
+                    } catch (err) {
+                        console.error(
+                            "Failed to parse debug data:",
+                            err
+                        );
+                    }
+                }
+                // Source Data
+                else if (line.startsWith("__SOURCE__")) {
+
+                    try {
+                        const source = JSON.parse(
+                            line.substring("__SOURCE__".length)
+                        );
+
+                        sources.push(source);
+
+                        console.log("Source:", source);
+
+                    } catch (err) {
+                        console.error(
+                            "Failed to parse source:",
+                            err
+                        );
+                    }
+                }
+                //Regular text
+                else {
+                    fullReply += line + "\n";
+
+                    msg.innerHTML = cleanText(fullReply);
+                }
+            }
+
         }
+
+        // Handle any remaining buffer after the stream ends
+        if (buffer) {
+
+            if (buffer.startsWith("__SOURCE__")) {
+
+                try {
+                    const source = JSON.parse(
+                        buffer.substring("__SOURCE__".length)
+                    );
+
+                    sources.push(source);
+
+                } catch (err) {
+                    console.error(
+                        "Failed to parse source:",
+                        err
+                    );
+                }
+
+            } else if (!buffer.startsWith("__DEBUG__")) {
+
+                fullReply += buffer;
+
+                msg.innerHTML = cleanText(fullReply);
+            }
+        }
+
+        // Display sources
+        if (sources.length > 0) {
+
+            const sourceContainer =
+                document.createElement("div");
+
+            sourceContainer.className =
+                "message-sources";
+
+            const title =
+                document.createElement("div");
+
+            title.className = "sources-title";
+            title.textContent = "Sources";
+
+            sourceContainer.appendChild(title);
+
+            sources.forEach(source => {
+
+                const sourceItem =
+                    document.createElement("div");
+
+                sourceItem.className = "source-item";
+
+                if (source.url) {
+
+                    const link =
+                        document.createElement("a");
+
+                    link.href = source.url;
+                    link.target = "_blank";
+                    link.rel = "noopener noreferrer";
+
+                    link.textContent =
+                        source.name || source.url;
+
+                    sourceItem.appendChild(link);
+
+                } else {
+
+                    sourceItem.textContent =
+                        source.name || "Current Page";
+                }
+
+                if (source.page) {
+                    sourceItem.append(
+                        ` — Page ${source.page}`
+                    );
+                }
+
+                sourceContainer.appendChild(sourceItem);
+            });
+
+            msg.appendChild(sourceContainer);
+        }
+        
 
         chatHistory.push({ role: "assistant", content: fullReply || "(no reply)" });
 
