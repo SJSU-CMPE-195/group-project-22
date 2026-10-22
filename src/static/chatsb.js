@@ -162,13 +162,17 @@ async function sendMessage() {
         }
 
         try {
+            const currentPageNumber = viewState.currentPage ?? 1;
+            console.log("Current Page Number:", currentPageNumber);
             const response = await fetch("/add-page-to-chroma", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    text: currentPageText
+                    text: currentPageText,
+                    source: "Current Page",
+                    page: currentPageNumber
                 })
             });
             if (!response.ok) {
@@ -405,7 +409,7 @@ async function sendMessage() {
 
             msg.appendChild(sourceContainer);
         }
-        
+
 
         chatHistory.push({ role: "assistant", content: fullReply || "(no reply)" });
 

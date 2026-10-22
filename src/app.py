@@ -1,3 +1,5 @@
+from importlib import metadata
+
 from flask import (
     Flask,
     json,
@@ -148,12 +150,13 @@ def chat_message():
             relevant_documents = []
             debug_chunks = []
 
-            # Make sure metadata is always a dictionary
-            if metadata is None:
-                metadata = {}
-
 
             for doc, dist, metadata in zip(documents, distances, metadatas):
+                
+                # Make sure metadata is always a dictionary
+                if metadata is None:
+                    metadata = {}
+
                 if dist < 1.5:
                     relevant_documents.append(doc)
                     debug_chunks.append(
@@ -237,6 +240,11 @@ def add_page_to_chroma():
 
     page_text = data.get("text", "")
 
+    # Get source information sent from JavaScript
+    source = data.get("source", "Current Page")
+    page = data.get("page")
+
+
     if not page_text.strip():
         return jsonify({"error": "No page text supplied"}), 400
 
@@ -250,9 +258,16 @@ def add_page_to_chroma():
         ids.append(str(uuid.uuid4()))
         documents.append(chunk)
 
-        metadatas.append({"source": "current_page", "chunk": index})
+        metadata = {"source": "current_page", "chunk": index}
+
+        # Only add page if it exists
+        if page is not None:
+            metadata["page"] = page
+
+        metadatas.append(metadata)
 
     page_collection.add(ids=ids, documents=documents, metadatas=metadatas)
+
 
     return jsonify({"success": True, "chunks": len(chunks)})
 
