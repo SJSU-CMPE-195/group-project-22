@@ -241,7 +241,7 @@ def add_page_to_chroma():
     page_text = data.get("text", "")
 
     # Get source information sent from JavaScript
-    source = data.get("source", "Current Page")
+    source = data.get("source")
     page = data.get("page")
 
 
@@ -258,7 +258,7 @@ def add_page_to_chroma():
         ids.append(str(uuid.uuid4()))
         documents.append(chunk)
 
-        metadata = {"source": "current_page", "chunk": index}
+        metadata = {"source": source, "chunk": index}
 
         # Only add page if it exists
         if page is not None:

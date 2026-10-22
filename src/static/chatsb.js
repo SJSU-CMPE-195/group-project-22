@@ -1,6 +1,6 @@
 import { getCurrentPageText } from "./view.js";
 import { updateButtons, viewState, fileStates } from "./viewState.js";
-import { setCurrFileIndex, fileInput, showFilesList, loadFileCallback, highlightSelectedFile } from "./filepanelupload.js";
+import { currFileIndex, setCurrFileIndex, fileInput, showFilesList, loadFileCallback, highlightSelectedFile } from "./filepanelupload.js";
 
 const sidebar = document.getElementById("chatSidebar");
 const openChatBtn = document.getElementById("openChatBtn");
@@ -162,8 +162,10 @@ async function sendMessage() {
         }
 
         try {
-            const currentPageNumber = viewState.currentPage ?? 1;
-            console.log("Current Page Number:", currentPageNumber);
+            // const currentPageNumber = viewState.currentPage ?? 0;
+            // const currentFile = fileInput[currFileIndex].name || "Unknown File";
+            // console.log("Current Page Number:", currentPageNumber);
+            // console.log("Current Page Text:", currentFile);
             const response = await fetch("/add-page-to-chroma", {
                 method: "POST",
                 headers: {
@@ -171,7 +173,7 @@ async function sendMessage() {
                 },
                 body: JSON.stringify({
                     text: currentPageText,
-                    source: "Current Page",
+                    source: fileInput[currFileIndex].name,
                     page: currentPageNumber
                 })
             });
