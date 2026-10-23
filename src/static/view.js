@@ -414,7 +414,7 @@ function addText(text) {
     }
 }
 
-async function navToPage(pageNum, { restoreHighlight = false, resetLine = false } = {}) {
+export async function navToPage(pageNum, { restoreHighlight = false, resetLine = false } = {}) {
     const state = fileStates[currFileIndex];
     if (resetLine) {
         state.line = 0;

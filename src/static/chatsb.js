@@ -1,6 +1,6 @@
-import { getCurrentPageText } from "./view.js";
+import { getCurrentPageText, navToPage } from "./view.js";
 import { updateButtons, viewState, fileStates } from "./viewState.js";
-import { currFileIndex, setCurrFileIndex, fileInput, showFilesList, loadFileCallback, highlightSelectedFile } from "./filepanelupload.js";
+import { loadFileByIndex, currFileIndex, setCurrFileIndex, fileInput, showFilesList, loadFileCallback, highlightSelectedFile } from "./filepanelupload.js";
 
 const sidebar = document.getElementById("chatSidebar");
 const openChatBtn = document.getElementById("openChatBtn");
@@ -162,10 +162,11 @@ async function sendMessage() {
         }
 
         try {
-            // const currentPageNumber = viewState.currentPage ?? 0;
-            // const currentFile = fileInput[currFileIndex].name || "Unknown File";
-            // console.log("Current Page Number:", currentPageNumber);
-            // console.log("Current Page Text:", currentFile);
+            const currentPageNumber = viewState.currentPage ?? 0;
+            const currentFile = fileInput[currFileIndex].name || "Unknown File";
+            console.log("Current Page Number:", currentPageNumber);
+            console.log("Current Page Text:", currentFile);
+
             const response = await fetch("/add-page-to-chroma", {
                 method: "POST",
                 headers: {
@@ -369,7 +370,7 @@ async function sendMessage() {
                 document.createElement("div");
 
             title.className = "sources-title";
-            title.textContent = "Sources";
+            title.textContent = "Sources:";
 
             sourceContainer.appendChild(title);
 
@@ -396,13 +397,28 @@ async function sendMessage() {
 
                 } else {
 
-                    sourceItem.textContent =
-                        source.name || "Current Page";
+                    const link = document.createElement("a");
+                    link.href = "#";
+                    link.textContent = source.name || "Current Page";
+
+                    link.addEventListener("click", (e) => {
+                        e.preventDefault();
+
+                        const index = fileInput.findIndex(
+                            file => file.name === source.name
+                        );
+
+                        if (index !== -1) {
+                            loadFileByIndex(index);
+                        }
+                    });
+
+                    sourceItem.appendChild(link);
                 }
 
                 if (source.page) {
                     sourceItem.append(
-                        ` — Page ${source.page}`
+                        ` - Page ${source.page}`
                     );
                 }
 
@@ -499,6 +515,11 @@ document.addEventListener("mouseup", function () {
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
 });
+
+
+
+
+
 
 // fetch URL and convert to PDF
 const fetchBtn = document.getElementById('fetch-btn');

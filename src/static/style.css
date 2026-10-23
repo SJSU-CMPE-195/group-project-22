@@ -508,6 +508,37 @@ body {
     }
 }
 
+/* Sources container under chat message */
+.message-sources {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #444;
+    font-size: 13px;
+}
+
+/* "Sources" heading */
+.sources-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+/* Each individual source */
+.source-item {
+    margin: 4px 0;
+}
+
+/* Clickable source/document names */
+.source-item a {
+    color: #4da6ff;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Underline when hovering */
+.source-item a:hover {
+    text-decoration: underline;
+}
+
 /*#fileUploadPanel {
     position: fixed;
     left: -260px;
