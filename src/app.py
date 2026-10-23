@@ -208,7 +208,7 @@ def chat_message():
 
         def generate():
             for chunk in debug_chunks:
-                yield "__DEBUG__" + json.dumps(chunk) + "\n"
+                yield "\n__DEBUG__" + json.dumps(chunk) + "\n"
 
             stream = gP.getChatResponse(messages_for_model, model)
 
