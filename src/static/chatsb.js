@@ -410,6 +410,7 @@ async function sendMessage() {
 
                         if (index !== -1) {
                             loadFileByIndex(index);
+                            navToPage(source.page, { restoreHighlight: true });
                         }
                     });
 
