@@ -354,11 +354,12 @@ document.addEventListener("mouseup", function () {
 });
 
 // fetch URL and convert to PDF
-const fetchBtn = document.getElementById('fetch-btn');
-const exportPdfBtn = document.getElementById('export-pdf-btn');
-const fetchUrlInput = document.getElementById('fetch-url');
-const fetchStatus = document.getElementById('fetch-status');
-
+export const fetchBtn = document.getElementById('fetch-btn');
+export const exportPdfBtn = document.getElementById('export-pdf-btn');
+export const fetchUrlInput = document.getElementById('fetch-url');
+export const addToListBtn = document.getElementById('add-to-list-btn');
+export const fetchStatus = document.getElementById('fetch-status');
+export const webPageStatus = document.getElementById('webpage-status');
 fetchBtn.addEventListener('click', async () => {
     const url = fetchUrlInput.value.trim();
     if (!url) { fetchStatus.textContent = 'Please enter a URL.'; return; }
@@ -386,6 +387,9 @@ fetchBtn.addEventListener('click', async () => {
         exportPdfBtn.disabled = false;
         document.getElementById("add-to-list-btn").disabled = false;
         fetchStatus.textContent = 'Page fetched! Ready to export.';
+        if (webPageStatus.textContent == 'gettingPdf') {
+            exportPdfBtn.click()
+        }
 
     } catch (err) {
         fetchStatus.textContent = 'Error: ' + err.message;
@@ -403,9 +407,12 @@ exportPdfBtn.addEventListener('click', () => {
     a.click();
     URL.revokeObjectURL(a.href);
     fetchStatus.textContent = 'PDF exported!';
+    if (webPageStatus.textContent == 'gettingPdf') {
+            addToListBtn.click()
+    }
 });
 
-document.getElementById("add-to-list-btn").addEventListener("click", () => {
+addToListBtn.addEventListener("click", () => {
     if (!window._fetchedPdfBlob) return;
 
     const filename = fetchUrlInput.value
@@ -447,4 +454,8 @@ document.getElementById("add-to-list-btn").addEventListener("click", () => {
     loadFileCallback(entry);
     fetchStatus.textContent = 'PDF saved!';
     document.getElementById("add-to-list-btn").disabled = true;
+    if(webPageStatus.textContent == 'gettingPdf') {
+       webPageStatus.textContent = ""
+       fetchUrlInput.value = ""
+    }
 });

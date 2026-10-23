@@ -6,8 +6,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build
 import { fileInput, currFileIndex, registerLoadFileCallback, highlightSelectedFile, setCurrFileIndex, registerResetViewCallback } from "./filepanelupload.js";
 registerLoadFileCallback(loadFile); // Register the loadFile function as a callback
 registerResetViewCallback(resetView); // Register the resetViewState function as a callback
-
 import { viewState, updateViewState, resetViewState as resetGlobalViewState, updateButtons, fileStates } from "./viewState.js";
+import {fetchBtn, fetchUrlInput, webPageStatus} from "./chatsb.js"
 const scale = 1;
 const canvas = document.getElementById("pdf");
 const context = canvas.getContext("2d");
@@ -378,6 +378,10 @@ async function getWebPage() {
         const resultObj = await response.json();
         // generate the pdf and load the file.
         alert("link:" + resultObj.link + "text: " + resultObj.text)
+        fetchUrlInput.value=resultObj.link
+        webPageStatus.textContent='gettingPdf'
+        fetchBtn.click()
+        
     } finally {
         btn.disabled = false;
         spinner.classList.add("hidden");

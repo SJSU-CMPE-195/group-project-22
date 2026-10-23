@@ -15,7 +15,7 @@ def getPrompt(line):
     # specify the string from the file.
     # Sends the chat reponse (from the Ollama github)
     response: ChatResponse = chat(
-        model="qwen3:1.7b",
+        model="gemma4:31b-cloud",
         messages=[
             {
                 "role": "user",
