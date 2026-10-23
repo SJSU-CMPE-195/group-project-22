@@ -10,13 +10,14 @@ const sendBtn = document.getElementById("sendBtn");
 const messages = document.getElementById("chatMessages");
 const resizeHandle = document.getElementById("resizeHandle");
 
+// Chat options menu elements
 const chatOptionsBtn = document.getElementById("chatOptionsBtn");
 const chatOptionsMenu = document.getElementById("chatOptionsMenu");
 const clearChatOption = document.getElementById("clearChatOption");
 const clearChatHistoryOption = document.getElementById("clearChatHistoryOption");
 const clearPageCollectionOption = document.getElementById("clearPageCollectionOption");
 
-/* Toggle sidebar */
+// Toggle sidebar
 function openChat() {
     sidebar.classList.add("open");
     openChatBtn.classList.add("hidden");
@@ -36,7 +37,7 @@ let chatHistory = [
 
 let activeChatController = null;
 
-/* Cancel functionality */
+// Cancel functionality
 function setChatThinking(isThinking) {
     if (isThinking) {
         sendBtn.textContent = "Cancel";
@@ -58,7 +59,7 @@ function cancelChat() {
     }
 }
 
-/* Model selection */
+// Model selection
 const modelSelect = document.getElementById("modelSelect");
 
 async function loadModels() {
@@ -105,7 +106,7 @@ async function loadModels() {
 
 loadModels();
 
-/* Chat options menu */
+// Chat options menu
 chatOptionsBtn.addEventListener("click", function (e) {
     e.stopPropagation();
     chatOptionsMenu.classList.toggle("hidden");
@@ -146,7 +147,7 @@ clearPageCollectionOption.addEventListener("click", async function () {
     }
 });
 
-/* Send message */
+// Send message
 async function sendMessage() {
     const text = input.value.trim();
     console.log("chatHistory:", chatHistory);
@@ -163,9 +164,6 @@ async function sendMessage() {
 
         try {
             const currentPageNumber = viewState.currentPage ?? 0;
-            const currentFile = fileInput[currFileIndex].name || "Unknown File";
-            console.log("Current Page Number:", currentPageNumber);
-            console.log("Current Page Text:", currentFile);
 
             const response = await fetch("/add-page-to-chroma", {
                 method: "POST",
@@ -198,9 +196,6 @@ async function sendMessage() {
             console.error("chromaDB error:",err);
             sendOutput("Error adding page to ChromaDB: " + err.message);
         }
-            
-        //chatHistory.push({ role: "user", content: currentPageText });
-        //messages.prepend(createMsg("message", text + ": Current Page Added to Context"));
 
         return;
     }
@@ -250,17 +245,6 @@ async function sendMessage() {
         const decoder = new TextDecoder("utf-8");
 
         let fullReply = "";
-
-        // while (true) {
-        //     const { value, done } = await reader.read();
-        //     if (done) break;
-
-        //     const chunkText = decoder.decode(value, { stream: true });
-        //     fullReply += chunkText;
-
-        //     msg.innerHTML = cleanText(fullReply);
-        // }
-
         let buffer = "";
         let sources = [];
 
@@ -452,6 +436,7 @@ async function sendMessage() {
     }
 }
 
+// Create message Right Bubble
 function createMsg(className, text) {
     const div = document.createElement("div");
     div.className = className;
@@ -459,7 +444,7 @@ function createMsg(className, text) {
     return div;
 }
 
-/* Send Output to message (test) */
+// Send Output to message Left Bubble (test)
 function sendOutput(markdownText) {
     const msg = document.createElement("div");
     msg.className = "output-message";
@@ -488,7 +473,7 @@ input.addEventListener("keypress", function(e){
     }
 });
 
-/* Resize sidebar by dragging left edge */
+// Resize sidebar by dragging left edge
 let isResizing = false;
 
 resizeHandle.addEventListener("mousedown", function (e) {
