@@ -9,6 +9,8 @@ import unicodedata
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 
+# stepIn by default uses "gemma4:31b-cloud" for cloud model, otherwise try "llama3.1:8b"/other if doesnt work
+stepin_model = "llama3.1:8b"
 
 # this is for webpage for information
 def getPrompt(line):
@@ -190,7 +192,7 @@ def getRelevantText(line, fileName):
         print("Debug: No extractable text in pdf")
         return "No extractable text in Pdf.", None, []
     response: ChatResponse = chat(
-        model="gemma4:31b-cloud",
+        model=stepin_model,
         messages=[
             {
                 "role": "user",

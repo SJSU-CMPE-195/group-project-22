@@ -92,14 +92,17 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    background: var(--panel-alt);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     z-index: 1000000;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    color: white;
-    font-size: 18px;
-    text-shadow: 0 0 4px black;
 }
 
 #loading-indicator.hidden {
@@ -786,7 +789,7 @@ button:disabled {
 #jumpBtn {
     border-left: none;
     padding: 4px 8px;
-    height: 28px;
+    height: 32px;
     cursor: pointer;
 }
 
@@ -797,6 +800,7 @@ button:disabled {
 #jumpInput {
     width: 70px;
     padding: 4px 6px;
+    height: 14px;
 }
 
 input[type="text"],
@@ -1041,4 +1045,36 @@ body.dark .cancel-btn:hover {
 .chat-fab:hover,
 .upload-fab:hover {
     background: var(--fab-hover);
+}
+
+.context-menu {
+    position: fixed;
+    min-width: 180px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    z-index: 5000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.context-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.context-item:hover {
+    background: var(--highlight-hover);
+}
+
+.context-separator {
+    height: 1px;
+    background: var(--border);
+}
+
+.context-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: default;
 }

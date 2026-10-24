@@ -4,10 +4,7 @@ import * as pdfjsLib from 'https://mozilla.github.io/pdf.js/build/pdf.mjs';
 // get the worker code as well
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
 import { fileInput, currFileIndex, registerLoadFileCallback, highlightSelectedFile, setCurrFileIndex, registerResetViewCallback } from "./filepanelupload.js";
-registerLoadFileCallback(loadFile); // Register the loadFile function as a callback
-registerResetViewCallback(resetView); // Register the resetViewState function as a callback
-
-import { viewState, updateViewState, resetViewState as resetGlobalViewState, updateButtons, fileStates } from "./viewState.js";
+import { viewState, updateViewState, resetViewState as resetGlobalViewState, updateButtons, fileStates, saveSession, restoreSession } from "./viewState.js";
 const scale = 1;
 const canvas = document.getElementById("pdf");
 const context = canvas.getContext("2d");
@@ -44,6 +41,7 @@ export async function stepIn() {
         if (currFileIndex < fileInput.length - 1) {
             const nextIndex = currFileIndex + 1;
             setCurrFileIndex(nextIndex);
+            saveSession();
             const nextFile = fileInput[nextIndex];
             if (!nextFile) {
                 console.error("No file at index", nextIndex);
@@ -161,8 +159,9 @@ export async function stepOut() {
     if (currFileIndex > 0) {
         const prevIndex = currFileIndex - 1;
         fileStates[prevIndex].line = fileStates[prevIndex].originLine;
-        fileStates[prevIndex].scroll = textDiv.scrollTop;
+        fileStates[prevIndex].scroll = viewerRight.scrollTop;
         setCurrFileIndex(prevIndex);
+        saveSession();
         const prevFile = fileInput[prevIndex];
         await loadFile(prevFile, { restoreHighlight: true });
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -280,6 +279,16 @@ export async function loadFile(input, { restoreHighlight = false } = {}) {
     if (state.text) {
         addText(state.text);
     }
+    if (state.page < 1) {
+        state.page = 1;
+    }
+
+    if (state.page > loadedPdf.numPages) {
+        console.warn(
+            `Page ${state.page} exceeds max ${loadedPdf.numPages} for ${input.name}`
+        );
+        state.page = 1;
+    }
     await navToPage(state.page, { restoreHighlight })
 
     pdfContainer.style.display = state.pdfVisible ? "block" : "none";
@@ -308,16 +317,22 @@ export async function renderPage(pageNum, restoreHighlight = false) {
     canvas.height = viewport.height;
     canvas.width = viewport.width;
     page.render({ canvasContext: context, viewport });
-    updateButtons();
     if (state.line >= 0 && restoreHighlight) {
+        console.log(
+            "restore line:",
+            state.line,
+            "numTimes before:",
+            viewState.numTimes
+        );
         const lines = textDiv.childNodes;
         if (state.line < lines.length) {
-            highlightLine(state.line, true);
+            highlightLine(state.line);
         } else {
             state.line = -1;
             updateViewState({ numTimes: -1 });
         }
     }
+    updateButtons();
 }
 
 function highlightLine(lineIndex, silent = false) {
@@ -343,23 +358,31 @@ function highlightLine(lineIndex, silent = false) {
         targetLine.classList.add("highlight-overlap");
     }
     updateViewState({ numTimes: lineIndex });
+    fileStates[currFileIndex].line = lineIndex;
     if (!silent) {
         targetLine.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+    saveSession();
 }
 
-textDiv.addEventListener("scroll", () => {
-    fileStates[currFileIndex].scroll = textDiv.scrollTop;
+const viewerRight = document.querySelector(".viewer-right");
+viewerRight.addEventListener("scroll", () => {
+    fileStates[currFileIndex].scroll = viewerRight.scrollTop;
+    console.log("Saved scroll:", viewerRight.scrollTop);
+});
+window.addEventListener("beforeunload", () => {
+    fileStates[currFileIndex].scroll = viewerRight.scrollTop;
+    saveSession();
 });
 
-function fileToDataURL(file) {
+/*function fileToDataURL(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
-}
+}*/
 
 nextLineBtn.addEventListener("click", () => {
     const lines = textDiv.childNodes;
@@ -507,7 +530,6 @@ async function navToPage(pageNum, { restoreHighlight = false, resetLine = false 
     }
     if (!restoreHighlight) {
         state.line = -1;
-        state.scroll = 0;
         updateViewState({ numTimes: -1 });
     }
     updateViewState({ currentPage: pageNum });
@@ -515,9 +537,10 @@ async function navToPage(pageNum, { restoreHighlight = false, resetLine = false 
     await renderPage(pageNum, restoreHighlight);
     if (restoreHighlight) {
         requestAnimationFrame(() => {
-            textDiv.scrollTop = state.scroll;
+            viewerRight.scrollTop = state.scroll;
         });
     }
+    saveSession();
 }
 
 document.getElementById("jumpBtn").addEventListener("click", function () {
@@ -547,6 +570,8 @@ jumpInput.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+    registerLoadFileCallback(loadFile); // Register the loadFile function as a callback
+    registerResetViewCallback(resetView); // Register the resetViewState function as a callback
     const toggleBtn = document.getElementById("togglePdf");
     const pdfContainer = document.querySelector(".viewer-left");
     const viewer = document.querySelector(".viewer-container");
@@ -556,10 +581,10 @@ document.addEventListener("DOMContentLoaded", () => {
         pdfContainer.style.display = hidden ? "block" : "none";
         viewer.classList.toggle("single-column", !hidden);
     });
-    const waitForPdf = setInterval(() => {
+    const waitForPdf = setInterval(async () => {
         if (fileInput && fileInput.length > 0) {
             clearInterval(waitForPdf);
-            loadFile(fileInput[currFileIndex]);
+            await restoreSession();
         }
     }, 50);
 });
@@ -573,3 +598,103 @@ document.getElementById("themeToggle").addEventListener("click", () => {
     sun.classList.toggle("hidden", dark);
     moon.classList.toggle("hidden", !dark);
 });
+
+const contextMenu = document.getElementById("contextMenu");
+textDiv.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    contextMenu.style.left = `${e.clientX}px`;
+    contextMenu.style.top = `${e.clientY}px`;
+    contextMenu.classList.remove("hidden");
+});
+
+document.addEventListener("click", () => {
+    contextMenu.classList.add("hidden");
+});
+
+document.getElementById("menu-stepin")
+    .addEventListener("click", () => {
+        contextMenu.classList.add("hidden");
+        stepIn();
+    });
+
+document.getElementById("menu-stepout")
+    .addEventListener("click", () => {
+        contextMenu.classList.add("hidden");
+        stepOut();
+    });
+
+document.getElementById("menu-nextline")
+    .addEventListener("click", () => {
+        contextMenu.classList.add("hidden");
+        nextLineBtn.click();
+    });
+
+document.getElementById("menu-prevline")
+    .addEventListener("click", () => {
+        contextMenu.classList.add("hidden");
+        prevLineBtn.click();
+    });
+
+document.getElementById("menu-nextpage")
+    .addEventListener("click", () => {
+        contextMenu.classList.add("hidden");
+        nextPageBtn.click();
+    });
+
+document.getElementById("menu-prevpage")
+    .addEventListener("click", () => {
+        contextMenu.classList.add("hidden");
+        prevPageBtn.click();
+    });
+
+document.getElementById("menu-btn-text")
+    .addEventListener("click", () => {
+        contextMenu.classList.add("hidden");
+        getWebPage();
+    });
+
+let currRelevantIndex = 0;
+function nextRelevant() {
+    const relevant = document.querySelectorAll(".relevant-line");
+    if (!relevant.length) return;
+    currRelevantIndex = (currRelevantIndex + 1) % relevant.length;
+    relevant[currRelevantIndex].scrollIntoView({behavior: "smooth",
+        block: "center"
+    });
+    highlightLine(Array.from(textDiv.childNodes).indexOf(relevant[currRelevantIndex]));
+}
+function prevRelevant() {
+    const relevant = document.querySelectorAll(".relevant-line");
+    if (!relevant.length) return;
+    currRelevantIndex = (currRelevantIndex - 1 + relevant.length) % relevant.length;
+    relevant[currRelevantIndex].scrollIntoView({behavior: "smooth",
+        block: "center"
+    });
+    highlightLine(Array.from(textDiv.childNodes).indexOf(relevant[currRelevantIndex]));
+}
+
+document.getElementById("menu-nextrelevant")
+    .addEventListener("click", () => {
+        contextMenu.classList.add("hidden");
+        nextRelevant();
+    });
+
+document.getElementById("menu-prevrelevant")
+    .addEventListener("click", () => {
+        contextMenu.classList.add("hidden");
+        prevRelevant();
+    });
+
+export async function jumpTo(file, pageNum, lineNum) {
+    const index = fileInput.findIndex(f => f.name === file);
+    if (index === -1) {
+        console.error("No file found:", file);
+        return;
+    }
+    setCurrFileIndex(index);
+    await loadFile(fileInput[index]);
+    await navToPage(pageNum, { restoreHighlight: false });
+    if (lineNum >= 0) {
+        highlightLine(lineNum);
+    }
+}

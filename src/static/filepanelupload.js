@@ -319,7 +319,7 @@ async function setupFileUpload() {
     fileInputElem.addEventListener("change", handleFileSelect);
 }
 
-export async function loadFileByIndex(index) {
+export async function loadFileByIndex(index, options = {}) {
     console.log("LOAD-BY-INDEX: index =", index);
     console.log("LOAD-BY-INDEX: entry =", fileInput[index]);
 
@@ -351,7 +351,7 @@ export async function loadFileByIndex(index) {
     if (typeof resetViewCallback === "function") {
         resetViewCallback(); // Reset the view state when a new file is selected
     }
-    await loadFileCallback(entry);
+    await loadFileCallback(entry, options);
     highlightSelectedFile();
     console.log(`Loading file: ${entry.name}`);
 
