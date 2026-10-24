@@ -292,7 +292,7 @@ def add_page_to_chroma():
     if not page_text.strip():
         return jsonify({"error": "No page text supplied"}), 400
 
-    chunks = gP.chunk_text(page_text)
+    chunks = gP.chunk_text(source, page_text)
 
     ids = []
     documents = []

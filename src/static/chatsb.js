@@ -159,6 +159,7 @@ async function sendMessage() {
 
     if (text.includes("[Page]")) {
         console.log("Detected [Page] command, adding current page to ChromaDB.");
+        sendOutput("Trying to add current page to ChromaDB.");
         await addCurrentPageToChroma(text);
         return;
     }
