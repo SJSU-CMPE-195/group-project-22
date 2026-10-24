@@ -150,60 +150,46 @@ clearPageCollectionOption.addEventListener("click", async function () {
 // Send message
 async function sendMessage() {
     const text = input.value.trim();
+    let messageText = text;
+
     console.log("chatHistory:", chatHistory);
     console.log("Selected model:", modelSelect.value);
 
     if (!text) return;
 
     if (text.includes("[Page]")) {
-        const currentPageText = getCurrentPageText();
-
-        if (!currentPageText.trim()) {
-            sendOutput("Unable to get text from the current page.");
-        }
-
-        try {
-            const currentPageNumber = viewState.currentPage ?? 0;
-
-            const response = await fetch("/add-page-to-chroma", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    text: currentPageText,
-                    source: fileInput[currFileIndex].name,
-                    page: currentPageNumber
-                })
-            });
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || "Failed to add page to ChromaDB");
-            }
-
-            const result = await response.json();
-
-            messages.prepend(
-                createMsg(
-                    "message",
-                    text + `: Current Page Added to Context (${result.chunks} chunks)`
-                )
-            );
-            
-            input.value = "";
-
-        } catch (err) {
-            console.error("chromaDB error:",err);
-            sendOutput("Error adding page to ChromaDB: " + err.message);
-        }
-
+        console.log("Detected [Page] command, adding current page to ChromaDB.");
+        await addCurrentPageToChroma(text);
         return;
+    }
+
+    const currentPagePatterns = [
+        /current\s+(page|file|document)/i,
+        /this\s+(page|file|document)/i,
+        /the\s+page\s+i'?m\s+on/i,
+        /the\s+file\s+i'?m\s+(on|viewing|reading)/i,
+        /the\s+document\s+i'?m\s+(on|viewing|reading)/i,
+        /what\s+i'?m\s+(viewing|reading)/i,
+        /page\s+i'?m\s+on/i
+    ];
+
+    const referencesCurrentContext = currentPagePatterns.some(pattern => pattern.test(text));
+
+    if(referencesCurrentContext) {
+        console.log("Detected reference to current page, adding current page to ChromaDB.");
+        await addCurrentPageToChroma(text);
+        // add to the message the file name and page number for context
+        const currentPageNumber = viewState.currentPage ?? 0;
+        const currentFileName = fileInput[currFileIndex]?.name || "Unknown File";
+        const currentPageText = getCurrentPageText();
+        const contextMessage = `\nContext: ${currentFileName}, Page ${currentPageNumber}], Text: ${currentPageText}`;
+        messageText += contextMessage;
     }
 
     messages.prepend(createMsg("message", text));
     input.value = "";
 
-    chatHistory.push({ role: "user", content: text });
+    chatHistory.push({ role: "user", content: messageText });
     console.log("chatHistory:", chatHistory);
 
     const loadingMsg = createMsg("thinking-message", "Thinking");
@@ -273,6 +259,7 @@ async function sendMessage() {
                             console.log("--- Chroma Chunk ---");
                             console.log("Type:", debug.type);
                             console.log("Distance:", debug.distance);
+                            console.log("Adjusted Distance:", debug.adjusted_distance);
                             console.log("Document:", debug.document);
                             console.log("Metadata:", debug.metadata);
                             console.log("--------------------");
@@ -436,6 +423,52 @@ async function sendMessage() {
     }
 }
 
+async function addCurrentPageToChroma(text) {
+    const currentPageText = getCurrentPageText();
+
+    if (!currentPageText.trim()) {
+        sendOutput("Unable to get text from the current page.");
+        return;
+    }
+
+    try {
+        const currentPageNumber = viewState.currentPage ?? 0;
+
+        const response = await fetch("/add-page-to-chroma", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                text: currentPageText,
+                source: fileInput[currFileIndex].name,
+                page: currentPageNumber
+            })
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || "Failed to add page to ChromaDB");
+        }
+
+        const result = await response.json();
+
+        if (result.alreadyExists) {
+            console.log("Current page already exists in context");
+        } else {
+            console.log(
+                `Current page added to context (${result.chunks} chunks)`
+            );
+        }
+        
+        input.value = "";
+
+    } catch (err) {
+        console.error("chromaDB error:",err);
+        sendOutput("Error adding page to ChromaDB: " + err.message);
+    }
+
+}
+
 // Create message Right Bubble
 function createMsg(className, text) {
     const div = document.createElement("div");
@@ -465,7 +498,7 @@ sendBtn.onclick = function () {
         sendMessage();
     }
 };
-//test.onclick = sendOuput;
+
 
 input.addEventListener("keypress", function(e){
     if(e.key === "Enter" && !activeChatController) {

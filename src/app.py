@@ -122,6 +122,7 @@ def chat_message():
         chat_history = data.get("chatHistory", [])
         model = data.get("model")
         debug_chunks = []
+        sources = []
         # Get latest user message
         user_message = ""
         if chat_history:
@@ -129,12 +130,11 @@ def chat_message():
 
         # Query Chroma for relevant page context
         page_context = ""
-        sources =[]
 
         if page_collection.count() > 0:
             results = page_collection.query(
                 query_texts=[user_message],
-                n_results=min(4, page_collection.count()),
+                n_results=min(8, page_collection.count()),
                 include=["documents", "distances", "metadatas"],
             )
             documents = results.get("documents", [[]])[
@@ -147,9 +147,7 @@ def chat_message():
                 0
             ]  # Get the first list of metadatas
 
-            relevant_documents = []
-            debug_chunks = []
-
+            ranked_results = []
 
             for doc, dist, metadata in zip(documents, distances, metadatas):
                 
@@ -157,26 +155,55 @@ def chat_message():
                 if metadata is None:
                     metadata = {}
 
-                if dist < 1.5:
-                    relevant_documents.append(doc)
-                    debug_chunks.append(
-                        {"type": "relevant", "distance": dist, "document": doc, "metadata": metadata}
-                    )
-                    source = {
-                        "name": metadata.get(
-                            "source",
-                            "Current Page"
-                        ),
-                        "page": metadata.get("page"),
-                        "url": metadata.get("url"),
-                    }
+                source_name = metadata.get("source", "Current Page")
+                page_number = metadata.get("page", "Unknown Page")
 
-                    # Prevent duplicate sources
-                    if source not in sources:
-                        sources.append(source)
+                adjusted_dist = dist
+
+                # Give a boost to documents that match the source name in recent history
+                if source_name and source_name.lower() in user_message:
+                    adjusted_dist *= 0.75
+                    # Give stronger boost if the page number matches
+                    if page_number and str(page_number) in user_message:
+                        adjusted_dist *= 0.6
+
+                ranked_results.append({
+                    "document": doc,
+                    "distance": dist,
+                    "adjusted_distance": adjusted_dist,
+                    "metadata": metadata
+                })
+
+            # Sort by adjusted distance
+            ranked_results.sort(key=lambda x: x["adjusted_distance"])
+                
+            relevant_documents = []
+
+            for result in ranked_results[:5]:
+                doc = result["document"]
+                dist = result["adjusted_distance"]
+                adjusted_dist = result["adjusted_distance"]
+                metadata = result["metadata"]
+                if adjusted_dist < 1.3:
+                        relevant_documents.append(doc)
+                        debug_chunks.append(
+                            {"type": "relevant", "distance": dist, "adjusted_distance": adjusted_dist,"document": doc, "metadata": metadata}
+                        )
+                        source = {
+                            "name": metadata.get(
+                                "source",
+                                "Current Page"
+                            ),
+                            "page": metadata.get("page"),
+                            "url": metadata.get("url"),
+                        }
+
+                        # Prevent duplicate sources
+                        if source not in sources:
+                            sources.append(source)
                 else:
                     debug_chunks.append(
-                        {"type": "unrelevant", "distance": dist, "document": doc, "metadata": metadata}
+                        {"type": "unrelevant", "distance": dist, "adjusted_distance": adjusted_dist, "document": doc, "metadata": metadata}
                     )
 
             page_context = "\n\n".join(relevant_documents)
@@ -244,6 +271,23 @@ def add_page_to_chroma():
     source = data.get("source")
     page = data.get("page")
 
+    # Check if this source/page is already in ChromaDB
+    if source and page is not None:
+        existing = page_collection.get(
+            where={
+                "$and": [
+                    {"source": source},
+                    {"page": page}
+                ]
+            }
+        )
+
+        if existing.get("ids"):
+            return jsonify({
+                "success": True,
+                "alreadyExists": True,
+                "message": "Page is already in ChromaDB"
+            })
 
     if not page_text.strip():
         return jsonify({"error": "No page text supplied"}), 400
