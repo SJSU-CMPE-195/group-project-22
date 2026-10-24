@@ -270,7 +270,7 @@ function setupFileUpload() {
     fileInputElem.addEventListener("change", handleFileSelect);
 }
 
-function loadFileByIndex(index) {
+export function loadFileByIndex(index) {
     const entry = fileInput[index];
     if (!entry) return;
     if (entry.file instanceof File && entry.type !== "uploaded") {

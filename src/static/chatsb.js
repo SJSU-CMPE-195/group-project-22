@@ -1,6 +1,6 @@
-import { getCurrentPageText } from "./view.js";
+import { getCurrentPageText, navToPage } from "./view.js";
 import { updateButtons, viewState, fileStates } from "./viewState.js";
-import { setCurrFileIndex, fileInput, showFilesList, loadFileCallback, highlightSelectedFile } from "./filepanelupload.js";
+import { loadFileByIndex, currFileIndex, setCurrFileIndex, fileInput, showFilesList, loadFileCallback, highlightSelectedFile } from "./filepanelupload.js";
 
 const sidebar = document.getElementById("chatSidebar");
 const openChatBtn = document.getElementById("openChatBtn");
@@ -10,13 +10,14 @@ const sendBtn = document.getElementById("sendBtn");
 const messages = document.getElementById("chatMessages");
 const resizeHandle = document.getElementById("resizeHandle");
 
+// Chat options menu elements
 const chatOptionsBtn = document.getElementById("chatOptionsBtn");
 const chatOptionsMenu = document.getElementById("chatOptionsMenu");
 const clearChatOption = document.getElementById("clearChatOption");
 const clearChatHistoryOption = document.getElementById("clearChatHistoryOption");
 const clearPageCollectionOption = document.getElementById("clearPageCollectionOption");
 
-/* Toggle sidebar */
+// Toggle sidebar
 function openChat() {
     sidebar.classList.add("open");
     openChatBtn.classList.add("hidden");
@@ -36,7 +37,7 @@ let chatHistory = [
 
 let activeChatController = null;
 
-/* Cancel functionality */
+// Cancel functionality
 function setChatThinking(isThinking) {
     if (isThinking) {
         sendBtn.textContent = "Cancel";
@@ -58,7 +59,7 @@ function cancelChat() {
     }
 }
 
-/* Model selection */
+// Model selection
 const modelSelect = document.getElementById("modelSelect");
 
 async function loadModels() {
@@ -105,7 +106,7 @@ async function loadModels() {
 
 loadModels();
 
-/* Chat options menu */
+// Chat options menu
 chatOptionsBtn.addEventListener("click", function (e) {
     e.stopPropagation();
     chatOptionsMenu.classList.toggle("hidden");
@@ -146,7 +147,7 @@ clearPageCollectionOption.addEventListener("click", async function () {
     }
 });
 
-/* Send message */
+// Send message
 async function sendMessage() {
     const text = input.value.trim();
     console.log("chatHistory:", chatHistory);
@@ -162,13 +163,17 @@ async function sendMessage() {
         }
 
         try {
+            const currentPageNumber = viewState.currentPage ?? 0;
+
             const response = await fetch("/add-page-to-chroma", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    text: currentPageText
+                    text: currentPageText,
+                    source: fileInput[currFileIndex].name,
+                    page: currentPageNumber
                 })
             });
             if (!response.ok) {
@@ -191,9 +196,6 @@ async function sendMessage() {
             console.error("chromaDB error:",err);
             sendOutput("Error adding page to ChromaDB: " + err.message);
         }
-            
-        //chatHistory.push({ role: "user", content: currentPageText });
-        //messages.prepend(createMsg("message", text + ": Current Page Added to Context"));
 
         return;
     }
@@ -243,28 +245,178 @@ async function sendMessage() {
         const decoder = new TextDecoder("utf-8");
 
         let fullReply = "";
-
-        // while (true) {
-        //     const { value, done } = await reader.read();
-        //     if (done) break;
-
-        //     const chunkText = decoder.decode(value, { stream: true });
-        //     fullReply += chunkText;
-
-        //     msg.innerHTML = cleanText(fullReply);
-        // }
-
         let buffer = "";
+        let sources = [];
 
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
-            const chunkText = decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value, { stream: true });
 
-            fullReply += chunkText;
-            msg.innerHTML = cleanText(fullReply);
+            const lines = buffer.split(/\r?\n/);
+            buffer = lines.pop();
+            for (const line of lines) {
+                // Debug Data
+                if (line.startsWith("__DEBUG__")) {
+
+                    try {
+                        const debug = JSON.parse(
+                            line.substring("__DEBUG__".length)
+                        );
+
+                        if (debug.type === "context_message") {
+                            console.log("--- Context Message ---");
+                            console.log(debug.content);
+                            console.log("-----------------------");
+                        } else {
+                            console.log("--- Chroma Chunk ---");
+                            console.log("Type:", debug.type);
+                            console.log("Distance:", debug.distance);
+                            console.log("Document:", debug.document);
+                            console.log("Metadata:", debug.metadata);
+                            console.log("--------------------");
+                        }
+
+                    } catch (err) {
+                        console.error(
+                            "Failed to parse debug data:",
+                            err
+                        );
+                    }
+                }
+                // Source Data
+                else if (line.startsWith("__SOURCE__")) {
+
+                    try {
+                        const source = JSON.parse(
+                            line.substring("__SOURCE__".length)
+                        );
+
+                        sources.push(source);
+
+                        console.log("Source:", source);
+
+                    } catch (err) {
+                        console.error(
+                            "Failed to parse source:",
+                            err
+                        );
+                    }
+                }
+                //Regular text
+                else {
+                    fullReply += line + "\n";
+
+                    msg.innerHTML = cleanText(fullReply);
+                }
+            }
+
         }
+
+        // Handle any remaining buffer after the stream ends
+        if (buffer) {
+
+            if (buffer.startsWith("__SOURCE__")) {
+
+                try {
+                    const source = JSON.parse(
+                        buffer.substring("__SOURCE__".length)
+                    );
+
+                    sources.push(source);
+
+                } catch (err) {
+                    console.error(
+                        "Failed to parse source:",
+                        err
+                    );
+                }
+
+            } else if (!buffer.startsWith("__DEBUG__")) {
+
+                fullReply += buffer;
+
+                msg.innerHTML = cleanText(fullReply);
+            }
+        }
+
+        // Display sources
+        if (sources.length > 0) {
+
+            const sourceContainer =
+                document.createElement("div");
+
+            sourceContainer.className =
+                "message-sources";
+
+            const title =
+                document.createElement("div");
+
+            title.className = "sources-title";
+            title.textContent = "Sources:";
+
+            sourceContainer.appendChild(title);
+
+            sources.forEach(source => {
+
+                const sourceItem =
+                    document.createElement("div");
+
+                sourceItem.className = "source-item";
+
+                if (source.url) {
+
+                    const link =
+                        document.createElement("a");
+
+                    link.href = source.url;
+                    link.target = "_blank";
+                    link.rel = "noopener noreferrer";
+
+                    link.textContent =
+                        source.name || source.url;
+
+                    sourceItem.appendChild(link);
+
+                } else {
+
+                    const link = document.createElement("a");
+                    link.href = "#";
+                    link.textContent = source.name || "Current Page";
+
+                    link.addEventListener("click", (e) => {
+                        e.preventDefault();
+
+                        const index = fileInput.findIndex(
+                            file => file.name === source.name
+                        );
+
+                        if (index !== -1) {
+                            if (index !== currFileIndex) {
+                                loadFileByIndex(index);
+                                navToPage(source.page, { restoreHighlight: true });
+                            } else {
+                                navToPage(source.page, { restoreHighlight: true });
+                            } 
+                        }
+                    });
+
+                    sourceItem.appendChild(link);
+                }
+
+                if (source.page) {
+                    sourceItem.append(
+                        ` - Page ${source.page}`
+                    );
+                }
+
+                sourceContainer.appendChild(sourceItem);
+            });
+
+            msg.appendChild(sourceContainer);
+        }
+
 
         chatHistory.push({ role: "assistant", content: fullReply || "(no reply)" });
 
@@ -284,6 +436,7 @@ async function sendMessage() {
     }
 }
 
+// Create message Right Bubble
 function createMsg(className, text) {
     const div = document.createElement("div");
     div.className = className;
@@ -291,7 +444,7 @@ function createMsg(className, text) {
     return div;
 }
 
-/* Send Output to message (test) */
+// Send Output to message Left Bubble (test)
 function sendOutput(markdownText) {
     const msg = document.createElement("div");
     msg.className = "output-message";
@@ -320,7 +473,7 @@ input.addEventListener("keypress", function(e){
     }
 });
 
-/* Resize sidebar by dragging left edge */
+// Resize sidebar by dragging left edge
 let isResizing = false;
 
 resizeHandle.addEventListener("mousedown", function (e) {
@@ -352,6 +505,11 @@ document.addEventListener("mouseup", function () {
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
 });
+
+
+
+
+
 
 // fetch URL and convert to PDF
 export const fetchBtn = document.getElementById('fetch-btn');
