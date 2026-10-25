@@ -131,17 +131,19 @@ def ensure_ollama_running():
     raise RuntimeError("Ollama could not be started.")
 
 
-def chunk_text(text, chunk_size=1000, overlap=200):
+def chunk_text(file_name, text, chunk_size=1000, overlap=200):
     chunks = []
 
     start = 0
 
+    # Add the file name to the beginning of the text to provide context for each chunk
     while start < len(text):
         end = start + chunk_size
 
-        chunk = text[start:end]
+        chunk = text[start:end] 
 
         if chunk.strip():
+            chunk = chunk + "\nFile: " + file_name
             chunks.append(chunk)
 
         start += chunk_size - overlap
