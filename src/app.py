@@ -137,20 +137,14 @@ def chat_message():
                 n_results=min(8, page_collection.count()),
                 include=["documents", "distances", "metadatas"],
             )
-            documents = results.get("documents", [[]])[
-                0
-            ]  # Get the first list of documents
-            distances = results.get("distances", [[]])[
-                0
-            ]  # Get the first list of distances
-            metadatas = results.get("metadatas", [[]])[
-                0
-            ]  # Get the first list of metadatas
+            # Get the first list of documents, distatnces and metadatas from results
+            documents = results.get("documents", [[]])[0]
+            distances = results.get("distances", [[]])[0]  
+            metadatas = results.get("metadatas", [[]])[0]
 
             ranked_results = []
 
             for doc, dist, metadata in zip(documents, distances, metadatas):
-                
                 # Make sure metadata is always a dictionary
                 if metadata is None:
                     metadata = {}
@@ -164,7 +158,8 @@ def chat_message():
                 if source_name and source_name.lower() in user_message:
                     adjusted_dist *= 0.75
                     # Give stronger boost if the page number matches
-                    if page_number and str(page_number) in user_message:
+                    textPage = "Page " + str(page_number)
+                    if textPage in user_message:
                         adjusted_dist *= 0.6
 
                 ranked_results.append({
@@ -176,7 +171,6 @@ def chat_message():
 
             # Sort by adjusted distance
             ranked_results.sort(key=lambda x: x["adjusted_distance"])
-                
             relevant_documents = []
 
             for result in ranked_results[:5]:
@@ -185,25 +179,33 @@ def chat_message():
                 adjusted_dist = result["adjusted_distance"]
                 metadata = result["metadata"]
                 if adjusted_dist < 1.3:
-                        relevant_documents.append(doc)
-                        debug_chunks.append(
-                            {"type": "relevant", "distance": dist, "adjusted_distance": adjusted_dist,"document": doc, "metadata": metadata}
-                        )
-                        source = {
-                            "name": metadata.get(
-                                "source",
-                                "Current Page"
-                            ),
-                            "page": metadata.get("page"),
-                            "url": metadata.get("url"),
-                        }
+                    relevant_documents.append(doc)
+                    debug_chunks.append(
+                        {"type": "relevant", 
+                         "distance": dist, 
+                         "adjusted_distance": adjusted_dist, 
+                         "document": doc, 
+                         "metadata": metadata}
+                    )
+                    source = {
+                        "name": metadata.get(
+                        "source", 
+                        "Current Page"
+                        ),
+                        "page": metadata.get("page"), 
+                        "url": metadata.get("url")
+                    }
 
-                        # Prevent duplicate sources
-                        if source not in sources:
-                            sources.append(source)
+                    # Prevent duplicate sources
+                    if source not in sources:
+                        sources.append(source)
                 else:
                     debug_chunks.append(
-                        {"type": "unrelevant", "distance": dist, "adjusted_distance": adjusted_dist, "document": doc, "metadata": metadata}
+                        {"type": "unrelevant", 
+                         "distance": dist, 
+                         "adjusted_distance": adjusted_dist, 
+                         "document": doc, 
+                         "metadata": metadata}
                     )
 
             page_context = "\n\n".join(relevant_documents)
@@ -242,12 +244,10 @@ def chat_message():
             for text in stream:
                 if not text:
                     continue
-
                 yield text
 
             # If there are sources, yield them at the end
             for source in sources:
-
                 yield (
                     "\n__SOURCE__"
                     + json.dumps(source)
@@ -264,7 +264,6 @@ def chat_message():
 @app.route("/add-page-to-chroma", methods=["POST"])
 def add_page_to_chroma():
     data = request.get_json()
-
     page_text = data.get("text", "")
 
     # Get source information sent from JavaScript
@@ -311,7 +310,6 @@ def add_page_to_chroma():
         metadatas.append(metadata)
 
     page_collection.add(ids=ids, documents=documents, metadatas=metadatas)
-
 
     return jsonify({"success": True, "chunks": len(chunks)})
 
