@@ -1,5 +1,4 @@
 import os
-from importlib import metadata
 
 from flask import (
     Flask,
@@ -15,14 +14,10 @@ from flask import (
 from flask_cors import CORS
 import chromadb
 import uuid
-import requests
 
 # import json
 import getPython as gP
 import io
-import requests as req
-from fpdf import FPDF
-from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 chromaClient = None
@@ -83,11 +78,19 @@ def stepIn():
         return jsonify({"error": "Missing 'line' or 'fileName' in request"}), 400
     # res = gP.getRelevantText(line, fileName)
     try:
-        print("BACKEND STEP-IN: calling getRelevantText on file =", fileName, flush=True)
+        print(
+            "BACKEND STEP-IN: calling getRelevantText on file =", fileName, flush=True
+        )
         relevant_text, pageNum, page_lines = gP.getRelevantText(line, fileName)
-        print("BACKEND STEP-IN: relevant_text snippet =", relevant_text[:200], flush=True)
+        print(
+            "BACKEND STEP-IN: relevant_text snippet =", relevant_text[:200], flush=True
+        )
         print("BACKEND STEP-IN: pageNum =", pageNum, flush=True)
-        print("BACKEND STEP-IN: first page_lines snippet =", "\n".join(page_lines[:10]), flush=True)
+        print(
+            "BACKEND STEP-IN: first page_lines snippet =",
+            "\n".join(page_lines[:10]),
+            flush=True,
+        )
 
     except Exception as e:
         print(f"Error in getRelevantText: {e}", flush=True)
@@ -95,42 +98,46 @@ def stepIn():
     backend_page_text = "\n".join(page_lines)
     # obj = {"text": res[0], "pageNum": res[1]}
     # print(json.dumps(obj))
-    return jsonify({"text": relevant_text, "pageText": backend_page_text, "pageNum": pageNum})
+    return jsonify(
+        {"text": relevant_text, "pageText": backend_page_text, "pageNum": pageNum}
+    )
 
 
-@app.route("/fetch-page", methods=['POST'])
+@app.route("/fetch-page", methods=["POST"])
 def fetch_page():
     data = request.get_json()
-    url = data.get('url', '').strip()
-    if not url or not url.startswith('http'):
-        return jsonify({'error': 'Invalid URL'}), 400
+    url = data.get("url", "").strip()
+    if not url or not url.startswith("http"):
+        return jsonify({"error": "Invalid URL"}), 400
     try:
         from playwright.sync_api import sync_playwright
+
         with sync_playwright() as p:
             browser = p.chromium.launch()
             context = browser.new_context(
-                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                viewport={'width': 1280, 'height': 800}
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 800},
             )
             page = context.new_page()
-            page.goto(url, wait_until='domcontentloaded', timeout=60000)
+            page.goto(url, wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(2000)
             pdf_bytes = page.pdf(
-                format='A4',
+                format="A4",
                 print_background=True,
-                margin={'top': '0', 'bottom': '0', 'left': '0', 'right': '0'},
-                scale=0.8
+                margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
+                scale=0.8,
             )
             browser.close()
 
         return send_file(
             io.BytesIO(pdf_bytes),
-            mimetype='application/pdf',
+            mimetype="application/pdf",
             as_attachment=True,
-            download_name='fetched-page.pdf'
+            download_name="fetched-page.pdf",
         )
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/chatMessage", methods=["POST"])
 def chat_message():
@@ -147,7 +154,7 @@ def chat_message():
 
         # Query Chroma for relevant page context
         page_context = ""
-        sources =[]
+        sources = []
 
         if page_collection is not None and page_collection.count() > 0:
             results = page_collection.query(
@@ -168,9 +175,8 @@ def chat_message():
             relevant_documents = []
             debug_chunks = []
 
-
             for doc, dist, metadata in zip(documents, distances, metadatas):
-                
+
                 # Make sure metadata is always a dictionary
                 if metadata is None:
                     metadata = {}
@@ -178,13 +184,15 @@ def chat_message():
                 if dist < 1.5:
                     relevant_documents.append(doc)
                     debug_chunks.append(
-                        {"type": "relevant", "distance": dist, "document": doc, "metadata": metadata}
+                        {
+                            "type": "relevant",
+                            "distance": dist,
+                            "document": doc,
+                            "metadata": metadata,
+                        }
                     )
                     source = {
-                        "name": metadata.get(
-                            "source",
-                            "Current Page"
-                        ),
+                        "name": metadata.get("source", "Current Page"),
                         "page": metadata.get("page"),
                         "url": metadata.get("url"),
                     }
@@ -194,7 +202,12 @@ def chat_message():
                         sources.append(source)
                 else:
                     debug_chunks.append(
-                        {"type": "unrelevant", "distance": dist, "document": doc, "metadata": metadata}
+                        {
+                            "type": "unrelevant",
+                            "distance": dist,
+                            "document": doc,
+                            "metadata": metadata,
+                        }
                     )
 
             page_context = "\n\n".join(relevant_documents)
@@ -239,11 +252,7 @@ def chat_message():
             # If there are sources, yield them at the end
             for source in sources:
 
-                yield (
-                    "\n__SOURCE__"
-                    + json.dumps(source)
-                    + "\n"
-                )
+                yield ("\n__SOURCE__" + json.dumps(source) + "\n")
 
         return Response(
             stream_with_context(generate()), content_type="text/plain; charset=utf-8"
@@ -261,7 +270,6 @@ def add_page_to_chroma():
     # Get source information sent from JavaScript
     source = data.get("source")
     page = data.get("page")
-
 
     if not page_text.strip():
         return jsonify({"error": "No page text supplied"}), 400
@@ -285,7 +293,6 @@ def add_page_to_chroma():
         metadatas.append(metadata)
 
     page_collection.add(ids=ids, documents=documents, metadatas=metadatas)
-
 
     return jsonify({"success": True, "chunks": len(chunks)})
 
@@ -330,6 +337,7 @@ def clear_page_collection():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route("/upload-pdf", methods=["POST"])
 def upload_pdf():
     try:
@@ -346,6 +354,7 @@ def upload_pdf():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route("/list-pdfs", methods=["GET"])
 def list_pdfs():
     folder_path = os.path.join("files", "default")
@@ -353,6 +362,7 @@ def list_pdfs():
         return jsonify([])
     files = [f for f in os.listdir(folder_path) if f.lower().endswith(".pdf")]
     return jsonify({"files": files})
+
 
 @app.route("/delete-pdf", methods=["POST"])
 def delete_pdf():
@@ -367,6 +377,7 @@ def delete_pdf():
         return jsonify({"success": True, "message": f"File {name} deleted"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     gP.ensure_ollama_running()

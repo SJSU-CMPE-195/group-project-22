@@ -5,12 +5,12 @@ import chromadb
 import subprocess
 import time
 import httpx
-import unicodedata
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 
 # stepIn by default uses "gemma4:31b-cloud" for cloud model, otherwise try "llama3.1:8b"/other if doesnt work
 stepin_model = "llama3.1:8b"
+
 
 # this is for webpage for information
 def getPrompt(line):
@@ -150,11 +150,14 @@ def chunk_text(text, chunk_size=1000, overlap=200):
         start += chunk_size - overlap
 
     return chunks
+
+
 # Use this method to reset data in the step in collection
 """def deleteStepIns():
     client = chromadb.PersistentClient("./")
     client.delete_collection(name="prevStepIns")"""
-    
+
+
 def getRelevantText(line, fileName):
     # read the chromadb database we stored in the current directory
     client = chromadb.PersistentClient("./")
@@ -162,7 +165,7 @@ def getRelevantText(line, fileName):
     alreadyIndb = False
     prevLinesString = ""
     # Get the relevant previous step ins.
-    if(prevStepInColl.count() != 0):
+    if prevStepInColl.count() != 0:
         prevLinesDocs = prevStepInColl.query(query_texts=[line], include=["documents"])
         # going from [[]] -> []
         prevLineList = prevLinesDocs["documents"][0]
@@ -172,10 +175,8 @@ def getRelevantText(line, fileName):
             prevLinesString += s + "\n"
     # add the new line to chromadb for future step ins.
     newId = ["id" + str(prevStepInColl.count() + 1)]
-    if(not alreadyIndb):
-        prevStepInColl.add(
-        ids=newId,
-        documents=line)
+    if not alreadyIndb:
+        prevStepInColl.add(ids=newId, documents=line)
     print(prevStepInColl.get(include=["documents"]))
     print("Sending step In prompt")
     document = PdfReader("./files/default/" + fileName)
