@@ -356,5 +356,5 @@ def clear_page_collection():
 
 
 if __name__ == "__main__":
-    gP.ensure_ollama_running()
+    gP.setup_ollama()
     app.run(debug=True)

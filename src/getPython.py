@@ -7,6 +7,11 @@ import time
 import httpx
 
 OLLAMA_URL = "http://127.0.0.1:11434"
+REQUIRED_MODELS = [
+    "qwen3:1.7b",
+    "llama3.2:1b",
+    "tinyllama:latest"
+]
 
 
 # this is for webpage for information
@@ -130,6 +135,25 @@ def ensure_ollama_running():
 
     raise RuntimeError("Ollama could not be started.")
 
+def ensure_required_models():
+    installed_models = getOllamaModels()
+
+    for model in REQUIRED_MODELS:
+        if model not in installed_models:
+            print(f"Downloading Ollama model: {model}")
+
+            subprocess.run(
+                ["ollama", "pull", model],
+                check=True,
+            )
+
+            print(f"{model} downloaded successfully.")
+        else:
+            print(f"{model} is already installed.")
+
+def setup_ollama():
+    ensure_ollama_running()
+    ensure_required_models()
 
 def chunk_text(file_name, text, chunk_size=1000, overlap=200):
     chunks = []
