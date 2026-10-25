@@ -1,4 +1,5 @@
 import os
+from importlib import metadata
 
 from flask import (
     Flask,
@@ -146,12 +147,13 @@ def chat_message():
 
         # Query Chroma for relevant page context
         page_context = ""
+        sources =[]
 
-        if page_collection.count() > 0:
+        if page_collection is not None and page_collection.count() > 0:
             results = page_collection.query(
                 query_texts=[user_message],
                 n_results=min(4, page_collection.count()),
-                include=["documents", "distances"],
+                include=["documents", "distances", "metadatas"],
             )
             documents = results.get("documents", [[]])[
                 0
@@ -159,19 +161,40 @@ def chat_message():
             distances = results.get("distances", [[]])[
                 0
             ]  # Get the first list of distances
+            metadatas = results.get("metadatas", [[]])[
+                0
+            ]  # Get the first list of metadatas
 
             relevant_documents = []
             debug_chunks = []
 
-            for doc, dist in zip(documents, distances):
+
+            for doc, dist, metadata in zip(documents, distances, metadatas):
+                
+                # Make sure metadata is always a dictionary
+                if metadata is None:
+                    metadata = {}
+
                 if dist < 1.5:
                     relevant_documents.append(doc)
                     debug_chunks.append(
-                        {"type": "relevant", "distance": dist, "document": doc}
+                        {"type": "relevant", "distance": dist, "document": doc, "metadata": metadata}
                     )
+                    source = {
+                        "name": metadata.get(
+                            "source",
+                            "Current Page"
+                        ),
+                        "page": metadata.get("page"),
+                        "url": metadata.get("url"),
+                    }
+
+                    # Prevent duplicate sources
+                    if source not in sources:
+                        sources.append(source)
                 else:
                     debug_chunks.append(
-                        {"type": "unrelevant", "distance": dist, "document": doc}
+                        {"type": "unrelevant", "distance": dist, "document": doc, "metadata": metadata}
                     )
 
             page_context = "\n\n".join(relevant_documents)
@@ -203,15 +226,24 @@ def chat_message():
 
         def generate():
             for chunk in debug_chunks:
-                yield "__DEBUG__" + json.dumps(chunk) + "\n"
+                yield "\n__DEBUG__" + json.dumps(chunk) + "\n"
 
             stream = gP.getChatResponse(messages_for_model, model)
 
             for text in stream:
-                if not text or not text.strip():
+                if not text:
                     continue
 
                 yield text
+
+            # If there are sources, yield them at the end
+            for source in sources:
+
+                yield (
+                    "\n__SOURCE__"
+                    + json.dumps(source)
+                    + "\n"
+                )
 
         return Response(
             stream_with_context(generate()), content_type="text/plain; charset=utf-8"
@@ -226,6 +258,11 @@ def add_page_to_chroma():
 
     page_text = data.get("text", "")
 
+    # Get source information sent from JavaScript
+    source = data.get("source")
+    page = data.get("page")
+
+
     if not page_text.strip():
         return jsonify({"error": "No page text supplied"}), 400
 
@@ -239,9 +276,16 @@ def add_page_to_chroma():
         ids.append(str(uuid.uuid4()))
         documents.append(chunk)
 
-        metadatas.append({"source": "current_page", "chunk": index})
+        metadata = {"source": source, "chunk": index}
+
+        # Only add page if it exists
+        if page is not None:
+            metadata["page"] = page
+
+        metadatas.append(metadata)
 
     page_collection.add(ids=ids, documents=documents, metadatas=metadatas)
+
 
     return jsonify({"success": True, "chunks": len(chunks)})
 
@@ -305,6 +349,8 @@ def upload_pdf():
 @app.route("/list-pdfs", methods=["GET"])
 def list_pdfs():
     folder_path = os.path.join("files", "default")
+    if not os.path.exists(folder_path):
+        return jsonify([])
     files = [f for f in os.listdir(folder_path) if f.lower().endswith(".pdf")]
     return jsonify({"files": files})
 

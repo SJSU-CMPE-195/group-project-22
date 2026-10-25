@@ -130,7 +130,12 @@ export function loadSession() {
 
 export async function restoreSession() {
     const session = loadSession();
-    if (!session) return;
+    if (!session) {
+        if (fileInput.length > 0) {
+            await loadFileByIndex(0);
+        }
+        return;
+    }
     const reorderedFiles = [];
     session.fileOrder.forEach(savedFile => {
         const found = fileInput.find(

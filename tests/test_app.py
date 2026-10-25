@@ -27,3 +27,18 @@ def test_fetch_page_valid_url(client):
     response = client.post('/fetch-page', json={'url': 'https://example.com'})
     assert response.status_code == 200
     assert response.content_type == 'application/pdf'
+    
+def test_list_pdfs(client):
+    response = client.get("/list-pdfs")
+    assert response.status_code == 200
+    
+def test_models(client):
+    response = client.get("/api/models")
+    assert response.status_code == 200
+    
+def test_chat_message_empty(client):
+    response = client.post(
+        "/chatMessage",
+        json={"chatHistory": [], "model": "qwen3:1.7b"}
+    )
+    assert response.status_code == 200

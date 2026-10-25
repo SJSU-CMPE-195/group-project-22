@@ -1,10 +1,8 @@
-//Most of the setup code is from the setup code from helloWorld.html from the pdf.js library
-// Import the pdjsLib module from the library (this is the only import that is working).
 import * as pdfjsLib from 'https://mozilla.github.io/pdf.js/build/pdf.mjs';
-// get the worker code as well
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
 import { fileInput, currFileIndex, registerLoadFileCallback, highlightSelectedFile, setCurrFileIndex, registerResetViewCallback } from "./filepanelupload.js";
 import { viewState, updateViewState, resetViewState as resetGlobalViewState, updateButtons, fileStates, saveSession, restoreSession } from "./viewState.js";
+
 const scale = 1;
 const canvas = document.getElementById("pdf");
 const context = canvas.getContext("2d");
@@ -16,7 +14,17 @@ let activeController = null;
 
 document.getElementById("stepIn").addEventListener("click", stepIn);
 document.getElementById("stepOut").addEventListener("click", stepOut);
+/* 
+Step in workflow: 
+Saves current nav state + selected line, 
+Move to next file in line, 
+Asks backend for relevant text to selected line,
+Nav to page with the text in destination file,
+Highlight/mark relevant lines on page,
+Preserves state for stepOut to return back to original location
+*/
 export async function stepIn() {
+    // disable until line is highlighted
     const cancelBtn = document.getElementById("cancelStepIn");
     cancelBtn.classList.remove("hidden");
     const stepInBtn = document.getElementById("stepIn");
@@ -27,8 +35,10 @@ export async function stepIn() {
     activeController = new AbortController();
     const signal = activeController.signal;
     try {
+        // saves currently highlighted line to go back to later
         fileStates[currFileIndex].originLine = viewState.numTimes;
         const prevLine = viewState.numTimes;
+        // if line doesnt exist
         if (
             prevLine == null ||
             prevLine < 0 ||
@@ -37,6 +47,7 @@ export async function stepIn() {
             alert("Cannot step in: the selected line does not exist in this file.");
             return;
         }
+        // taking selected line for query, moving to next file
         var stepInLine = textDiv.childNodes[prevLine].innerText
         if (currFileIndex < fileInput.length - 1) {
             const nextIndex = currFileIndex + 1;
@@ -75,9 +86,7 @@ export async function stepIn() {
                 return;
             }
 
-            //const backendPageText = resultObj.pageText;
             const correctPage = resultObj.pageNum;
-            //const correctPage = await findPageByText(backendPageText);
             if (correctPage === null || correctPage < 0) {
                 alert("Relevant text found, but page could not be matched");
                 return;
@@ -88,7 +97,7 @@ export async function stepIn() {
                 .filter(l => l.length > 0);
             fileStates[currFileIndex].line = 0;
             fileStates[currFileIndex].scroll = 0;
-
+            // navigates to page with the relevant text, marks them in gray + scrolls
             await navToPage(correctPage, {
                 restoreHighlight: false,
                 resetLine: true
@@ -183,19 +192,6 @@ function showLoadingOverlay(message = "Loading") {
 function hideLoadingOverlay() {
     document.getElementById("interaction-blocker").classList.add("hidden");
     document.getElementById("loading-indicator").classList.add("hidden");
-}
-
-
-function setViewerCursor(cursorStyle) {
-    const viewer = document.getElementById("viewer-container");
-    if (!viewer) return;
-    viewer.classList.remove(
-        "viewer-loading",
-        "viewer-default",
-        "viewer-highlight",
-        "viewer-blocked"
-    );
-    viewer.classList.add(`viewer-${cursorStyle}`);
 }
 
 async function getPageData(pdf, pageNum) {
@@ -375,15 +371,6 @@ window.addEventListener("beforeunload", () => {
     saveSession();
 });
 
-/*function fileToDataURL(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}*/
-
 nextLineBtn.addEventListener("click", () => {
     const lines = textDiv.childNodes;
     if (viewState.numTimes < lines.length - 1) {
@@ -522,7 +509,7 @@ function addText(text) {
     }
 }
 
-async function navToPage(pageNum, { restoreHighlight = false, resetLine = false } = {}) {
+export async function navToPage(pageNum, { restoreHighlight = false, resetLine = false } = {}) {
     const state = fileStates[currFileIndex];
     if (resetLine) {
         state.line = 0;
@@ -658,7 +645,8 @@ function nextRelevant() {
     const relevant = document.querySelectorAll(".relevant-line");
     if (!relevant.length) return;
     currRelevantIndex = (currRelevantIndex + 1) % relevant.length;
-    relevant[currRelevantIndex].scrollIntoView({behavior: "smooth",
+    relevant[currRelevantIndex].scrollIntoView({
+        behavior: "smooth",
         block: "center"
     });
     highlightLine(Array.from(textDiv.childNodes).indexOf(relevant[currRelevantIndex]));
@@ -667,7 +655,8 @@ function prevRelevant() {
     const relevant = document.querySelectorAll(".relevant-line");
     if (!relevant.length) return;
     currRelevantIndex = (currRelevantIndex - 1 + relevant.length) % relevant.length;
-    relevant[currRelevantIndex].scrollIntoView({behavior: "smooth",
+    relevant[currRelevantIndex].scrollIntoView({
+        behavior: "smooth",
         block: "center"
     });
     highlightLine(Array.from(textDiv.childNodes).indexOf(relevant[currRelevantIndex]));
