@@ -14,7 +14,7 @@ REQUIRED_MODELS = [
 ]
 
 # stepIn by default uses "gemma4:31b-cloud" for cloud model, otherwise try "llama3.1:8b"/other if doesnt work
-stepin_model = "llama3.1:8b"
+stepin_model = "gemma4:31b-cloud"
 
 
 # this is for webpage for information
