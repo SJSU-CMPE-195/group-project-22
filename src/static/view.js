@@ -86,8 +86,10 @@ export async function stepIn() {
                 return;
             }
 
-            const correctPage = resultObj.pageNum;
-            if (correctPage === null || correctPage < 0) {
+            const backendPageText = resultObj.pageText;
+            const correctPage = await findPageByText(backendPageText);
+
+            if (correctPage === -1) {
                 alert("Relevant text found, but page could not be matched");
                 return;
             }
@@ -177,6 +179,25 @@ export async function stepOut() {
         highlightSelectedFile();
     }
     updateButtons();
+}
+
+async function findPageByText(backendPageText) {
+    const normalizedBackend = normalize(backendPageText);
+    const pdf = viewState.pdf;
+    const total = pdf.numPages;
+    for (let i = 1; i <= total; i++) {
+        const { text } = await getPageData(pdf, i);
+        const pageText = text.items
+            .map(item => item.str.trim())
+            .filter(str => str.length > 0)
+            .join(" ");
+        const normalizedPage = normalize(pageText);
+        if (normalizedPage.includes(normalizedBackend) ||
+            normalizedBackend.includes(normalizedPage)) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 function showLoadingOverlay(message = "Loading") {
