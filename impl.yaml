@@ -1,0 +1,19 @@
+project_name: "LearningDebugger"
+project_type: "hybrid"            # web | mobile | api | ml | hardware | iot | embedded | hybrid
+
+impl_claim: "The prototype allows the user to go line by line, jump to different pages and step out of documents. Next, they can also step in to find relevant or no relevant text in the next file and they can find a link to a website and some text if they need external context for a line as well. They can also access a side chat to ask questions about the current page.  Additionally, they can upload files and fetch and export pdf for a web url."
+
+languages: ["python", “javascript”, “html”]
+hardware_required: false         # true if the full system needs physical hardware
+
+setup:
+  - "pip install -r requirements.txt"
+test:
+  - "pytest tests/ -v"
+run:
+  - "python ./src/app.py"
+
+demo:
+  video: "https://drive.google.com/file/d/1QIfCBFvfz6tIShQ7OncN1vXOdNzZSK51/view?usp=sharing"
+  screenshots: ["docs/MainDashBoard.png"] ["docs/UploadTab.png"] ["docs/ChatTab.png"] ["docs/StepInOutput.png"]
+
