@@ -1,6 +1,7 @@
 from ollama import chat
 from ollama import ChatResponse
 from pypdf import PdfReader
+from pathlib import Path
 import chromadb
 import subprocess
 import time
@@ -201,7 +202,11 @@ def getRelevantText(line, fileName):
         documents=line)
     print(prevStepInColl.get(include=["documents"]))
     print("Sending step In prompt")
-    document = PdfReader("./files/default/" + fileName)
+
+    base_path = Path(__file__).resolve().parent
+    file_path = base_path / "files" / "default" / fileName
+
+    document = PdfReader(file_path)
     length = len(document.pages)
     if len(document.pages) > 20:
         length = 20
