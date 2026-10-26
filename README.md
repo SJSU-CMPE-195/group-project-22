@@ -25,7 +25,7 @@ The LearningDebugger prototype covers the main end-to-end user workflow from add
 
 ---
 ## System Architecture
-![Screenshot](docs/SystemArchitecture.png)
+![Screenshot](docs/SystemArchitectureGraph.png)
 
 ---
 ## Prerequisites
