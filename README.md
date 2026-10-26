@@ -14,39 +14,69 @@
 **Advisor:** [KaiKai Liu]
 
 ---
-## Demo
-
-Basic UI functionality and Step In output demo (Look at the screenshots for other output): [UI demo](https://drive.google.com/file/d/16XsUY231yJXZWnG5HBh0N4AHuJ3Zo0-q/view?usp=sharing)
-
-Webpage URL fetch and PDF export demo: [PDF export demo](https://drive.google.com/file/d/1Yx7nBlVo-ft7-BIyjnUT5rMikSesaomh/view?usp=sharing)
-
-Chat Functionality (grabbing current page context): [Chat demo](https://drive.google.com/file/d/147_XFIb9aXVr1SXZ4boevXgZzNn-65fk/view?usp=sharing) 
-
-
-
-**Live Demo:** [URL if deployed]
-
----
 ## Project Description
 
-This web application is an AI assistant that allows the user to cluster study material like a textbook or notes. It allows the user to view those documents going line by line and stepping in and out to different materials to the relevant sections within those materials like a debugger. If you do not have enough source, the app will provide the user relevant websites. The AI chat at the side can provide clear summaries about the page/subject highlighted by the user. 
+This web application is an AI assistant that allows the user to cluster study material like a textbook or notes. It allows the user to view those documents going line by line and stepping in and out to different materials to the relevant sections within those materials like a debugger. If you do not have enough sources, the app will provide the user with relevant websites. The AI chat at the side can provide clear summaries and about the page they are currently on.
 
 ---
-## Proof of Concept Scope
+## Prototype Scope
 
-The proof of concepts demonstrates functional UI line by line document navigation, ability to generate pdf from webpage link, ability to change pages, and step in, step out. Step in output can be seen, but the UI has not been updated yet with the relevant text highlighted for that document. Website link and text are not updated on the UI, but the output can be seen. The chat functionality works where the user can ask for help, but chat history cannot store large amounts of text.
-
----
-## Screenshots
-
-| Feature | Screenshot |
-|---------|------------|
-| [Chat: Current Full Page into Context (to add current page in chat type "[Page]") | ![Screenshot](docs/ChatPageContext.png) |
-| [Step In Output] | ![Screenshot](docs/StepInOutput.png) |
-| [Webpage Output] | ![Screenshot](docs/Webpage-Output.png) |
+The LearningDebugger prototype covers the main end-to-end user workflow from adding and deleting files, fetching contextually relevant urls into pdfs for download or adding to the file list, navigating through line by line, stepping into and out of text and finding relevant contextual information on another to navigate towards, and asking chat for page context and questions while history is saved and data is stored with use.
 
 ---
+## System Architecture
+![Screenshot](docs/SystemArchitecture.png)
 
+---
+## Prerequisites
+
+- [Flask] v.3.1.3+
+- [flask_cors] v.6.0.2+
+- [ollama] v.0.6.1+
+- [requests] v.2.32.5+
+- [fpdf2] v.2.8.4+
+- [beautifulsoup4] v.4.14.3+
+- [chromadb] v.1.5.8+
+- [pypdf] v.6.10.2+
+- [playwright] v.1.64.1+
+- [pillow] v.11.3.0+
+
+---
+## Installation
+
+```bash
+1. Install Ollama App
+2. Get the cloud model for step ins: ollama run gemma4:31b-cloud
+
+# Clone the repository
+3. git clone https://github.com/SJSU-CMPE-195/group-project-group9.git
+4. cd group-project-group9
+
+# Install dependencies
+5. pip install -r requirements.txt
+6. python -m playwright install 
+```
+
+---
+## Running the Prototype
+
+```bash
+# Development mode
+python ./src/app.py 
+
+# The app will be available at http://localhost:5000
+```
+
+---
+## Testing
+Covers the fetch-url pdf as of now.
+pytest tests/ -v
+
+---
+## Demo
+ [Workflow Demo](https://drive.google.com/file/d/1QIfCBFvfz6tIShQ7OncN1vXOdNzZSK51/view?usp=sharing)
+
+---
 ## Tech Stack
 
 | Category | Technology |
@@ -57,128 +87,11 @@ The proof of concepts demonstrates functional UI line by line document navigatio
 | Deployment | N/A |
 
 ---
+## What's Next
 
-## Getting Started
-
-### Prerequisites
-
-- [Flask] v.3.1.3+
-- [flask_cors] v.6.0.2+
-- [ollama] v.0.6.1+
-- [requests] 2.32.5+
-- [fpdf2] v.2.8.4+
-- [beautifulsoup4] v.4.14.3+
-- [chromsdb] v.1.5.8+
-- [pypdf] v.6.10.2+
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/SJSU-CMPE-195/group-project-group9.git
-cd group-project-group9
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run database migrations (if applicable)
-[migration command]
-```
+Clean up the step in code and finish adding uploaded files to chromadb. Finish the webpage step in, so that it downloads the pdf and highlights the relevant text it gets. Add more tests for the project and deployment.
 
 ---
-### Running Locally
-
-```bash
-# Development mode
-python ./src/app.py 
-
-# The app will be available at http://localhost:5000
-```
-
----
-## What's Next (195B)
-1. Implement other desired features as personal developed plans, generated study materials, clarifications and questions chat.
-2. Detailed and appealing UI/UX, simple to use and understand; provides complete feedback, functionality, and support to users.
-3. Fully functional backend and chromadb, possibly saved local storage in documents and history, possibly accounts, able to last long term with efficiency and error handling. 
-4. Working to make the LLM searching for information and relevant sections more reliable. 
-
----
-## Problem Statement
-
-Students today heavily rely on digital devices to keep and learn from for their overall understanding in courses, but due to the large pools of information they have to go through on a daily basis they are often overwhelmed. Students are found to underperform on tests when multitasking beforehand, having a loss of focus switching through many different concepts.
-
-## Solution
-
-The LearningDebugger is a debugging-styled LLM study tool assisting in comprehension and navigation through texts for students. Users will be able to traverse line by line, step in and out of those concepts unfamiliar to them onto additional relevant resources for context and understanding and be provided an interactive chat where they can ask any additional questions. With this solution, it provides a way to quickly switch between notes, PDFs, info from sites, and other resources while providing additional features to build up overall understanding.
-
-### Key Features
-
-- Feature 1. Line-by-Line traversal, highlighting text focusing on one concept or sentence at a time
-- Feature 2. Step in/out of text line, into layers of relevant conceptual information and explanations for comprehension
-- Feature 3. Interactive AI chat, real-time questions and answers for extra clarification
-
----
-### Running Tests
-
-```bash
-[test command]
-```
-
----
-
-## API Reference
-
-<details>
-<summary>Click to expand API endpoints</summary>
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/resource` | Get all resources |
-| GET | `/api/resource/:id` | Get resource by ID |
-| POST | `/api/resource` | Create new resource |
-| PUT | `/api/resource/:id` | Update resource |
-| DELETE | `/api/resource/:id` | Delete resource |
-
-</details>
-
----
-
-## Project Structure
-
-```
-.
-├── [folder]/           # Description
-├── src/                # Source code files
-├── tests/              # Test files
-├── docs/               # Documentation files
-└── README.md
-```
-
----
-
-## Contributing
-
-1. Create a feature branch (`git checkout -b feature/amazing-feature`)
-2. Commit your changes (`git commit -m 'Add amazing feature'`)
-3. Push to the branch (`git push origin feature/amazing-feature`)
-4. Open a Pull Request
-
-### Branch Naming
-
-- `feature/` - New features
-- `fix/` - Bug fixes
-- `docs/` - Documentation updates
-- `refactor/` - Code refactoring
-
-### Commit Messages
-
-Use clear, descriptive commit messages:
-- `Add user authentication endpoint`
-- `Fix database connection timeout issue`
-- `Update README with setup instructions`
-
----
-
 ## Acknowledgments
 
 - Project Advisor KaiKai Liu for guidance and feedback during development
@@ -186,11 +99,5 @@ Use clear, descriptive commit messages:
 - All team members for collaboration and contributions
 
 ---
-
-## License
-
-This project is licensed under the <FILL IN> License - see the [LICENSE](LICENSE) file for details.
-
----
-
 *CMPE 195A/B - Senior Design Project | San Jose State University | Spring 2026*
+
