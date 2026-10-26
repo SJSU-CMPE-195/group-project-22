@@ -7,6 +7,11 @@ import time
 import httpx
 
 OLLAMA_URL = "http://127.0.0.1:11434"
+REQUIRED_MODELS = [
+    "qwen3:1.7b",
+    "llama3.2:1b",
+    "tinyllama:latest"
+]
 
 # stepIn by default uses "gemma4:31b-cloud" for cloud model, otherwise try "llama3.1:8b"/other if doesnt work
 stepin_model = "llama3.1:8b"
@@ -133,18 +138,39 @@ def ensure_ollama_running():
 
     raise RuntimeError("Ollama could not be started.")
 
+def ensure_required_models():
+    installed_models = getOllamaModels()
 
-def chunk_text(text, chunk_size=1000, overlap=200):
+    for model in REQUIRED_MODELS:
+        if model not in installed_models:
+            print(f"Downloading Ollama model: {model}")
+
+            subprocess.run(
+                ["ollama", "pull", model],
+                check=True,
+            )
+
+            print(f"{model} downloaded successfully.")
+        else:
+            print(f"{model} is already installed.")
+
+def setup_ollama():
+    ensure_ollama_running()
+    ensure_required_models()
+
+def chunk_text(file_name, text, chunk_size=1000, overlap=200):
     chunks = []
 
     start = 0
 
+    # Add the file name to the beginning of the text to provide context for each chunk
     while start < len(text):
         end = start + chunk_size
 
-        chunk = text[start:end]
+        chunk = text[start:end] 
 
         if chunk.strip():
+            chunk = chunk + "\nFile: " + file_name
             chunks.append(chunk)
 
         start += chunk_size - overlap
