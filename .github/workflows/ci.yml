@@ -52,6 +52,33 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama
+        run: |
+          ollama serve > /tmp/ollama.log 2>&1 &
+
+          for i in {1..15}; do
+            if curl -s http://127.0.0.1:11434/api/tags > /dev/null; then
+              echo "Ollama is running."
+              exit 0
+            fi
+
+            echo "Waiting for Ollama..."
+            sleep 1
+          done
+
+          echo "Ollama failed to start."
+          cat /tmp/ollama.log
+          exit 1
+
+      - name: Check Ollama
+        run: |
+          ollama --version
+          ollama list
+
       - name: Check for tests
         id: check_tests
         shell: bash
