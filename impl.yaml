@@ -8,6 +8,7 @@ hardware_required: false         # true if the full system needs physical hardwa
 
 setup:
   - "pip install -r requirements.txt"
+  - "python -m playwright install"
 test:
   - "pytest tests/ -v"
 run:
