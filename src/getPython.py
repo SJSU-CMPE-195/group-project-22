@@ -8,11 +8,7 @@ import time
 import httpx
 
 OLLAMA_URL = "http://127.0.0.1:11434"
-REQUIRED_MODELS = [
-    "qwen3:1.7b",
-    "llama3.2:1b",
-    "tinyllama:latest"
-]
+REQUIRED_MODELS = ["qwen3:1.7b", "llama3.2:1b", "tinyllama:latest"]
 
 # stepIn by default uses "gemma4:31b-cloud" for cloud model, otherwise try "llama3.1:8b"/other if doesnt work
 stepin_model = "gemma4:31b-cloud"
@@ -139,6 +135,7 @@ def ensure_ollama_running():
 
     raise RuntimeError("Ollama could not be started.")
 
+
 def ensure_required_models():
     installed_models = getOllamaModels()
 
@@ -155,9 +152,11 @@ def ensure_required_models():
         else:
             print(f"{model} is already installed.")
 
+
 def setup_ollama():
     ensure_ollama_running()
     ensure_required_models()
+
 
 def chunk_text(file_name, text, chunk_size=1000, overlap=200):
     chunks = []
@@ -168,7 +167,7 @@ def chunk_text(file_name, text, chunk_size=1000, overlap=200):
     while start < len(text):
         end = start + chunk_size
 
-        chunk = text[start:end] 
+        chunk = text[start:end]
 
         if chunk.strip():
             chunk = chunk + "\nFile: " + file_name
@@ -208,7 +207,7 @@ def getRelevantText(line, fileName):
     print("Sending step In prompt")
 
     base_path = Path(__file__).resolve().parent
-    file_path = base_path / "files" / "default" / fileName
+    file_path = base_path / "files" / fileName
 
     document = PdfReader(file_path)
     length = len(document.pages)

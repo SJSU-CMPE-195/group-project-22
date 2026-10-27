@@ -1,5 +1,5 @@
 import { currFileIndex, fileInput, setCurrFileIndex, loadFileByIndex, showFilesList } from './filepanelupload.js';
-import { loadFile } from './view.js';
+import { canStepOut } from './view.js';
 
 export const viewState = {
     pdf: null,
@@ -71,7 +71,7 @@ export function updateButtons() {
     nextLineBtn.disabled = !hasText || LineIndex >= maxLinesIndex;
     prevLineBtn.disabled = !hasText || LineIndex <= 0;
     stepInBtn.disabled = !hasText || LineIndex < 0 || currFileIndex >= fileInput.length - 1;
-    stepOutBtn.disabled = currFileIndex <= 0;
+    stepOutBtn.disabled = !canStepOut();
     menuStepIn.classList.toggle(
         "context-disabled",
         stepInBtn.disabled
@@ -107,6 +107,7 @@ export function updateButtons() {
 }
 
 export function saveSession() {
+    console.trace("saveSession called");
     console.log("Saving session");
     localStorage.setItem("LD-Session", JSON.stringify({
         currentFileIndex: currFileIndex,
@@ -117,7 +118,8 @@ export function saveSession() {
             page: state.page,
             line: state.line,
             scroll: state.scroll,
-            pdfVisible: state.pdfVisible
+            pdfVisible: state.pdfVisible,
+            originLine: state.originLine
         }))
     }));
 }

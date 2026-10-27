@@ -16,6 +16,8 @@ export function setCurrFileIndex(value) {
 const filesPanel = document.getElementById("fileUploadPanel");
 const openUploadBtn = document.getElementById("openUploadBtn");
 export let fileInput = []; // Initialize fileInput as an empty array
+
+// default files that can't be deleted, subject to change/removal
 const systemDefaults = new Set([
     "StanfordPaper1.pdf",
     "ConstitutionWords.pdf",

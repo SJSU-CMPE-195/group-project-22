@@ -168,7 +168,7 @@ def chat_message():
             )
             # Get the first list of documents, distatnces and metadatas from results
             documents = results.get("documents", [[]])[0]
-            distances = results.get("distances", [[]])[0]  
+            distances = results.get("distances", [[]])[0]
             metadatas = results.get("metadatas", [[]])[0]
 
             ranked_results = []
@@ -191,12 +191,14 @@ def chat_message():
                     if textPage in user_message:
                         adjusted_dist *= 0.6
 
-                ranked_results.append({
-                    "document": doc,
-                    "distance": dist,
-                    "adjusted_distance": adjusted_dist,
-                    "metadata": metadata
-                })
+                ranked_results.append(
+                    {
+                        "document": doc,
+                        "distance": dist,
+                        "adjusted_distance": adjusted_dist,
+                        "metadata": metadata,
+                    }
+                )
 
             # Sort by adjusted distance
             ranked_results.sort(key=lambda x: x["adjusted_distance"])
@@ -210,19 +212,18 @@ def chat_message():
                 if adjusted_dist < 1.3:
                     relevant_documents.append(doc)
                     debug_chunks.append(
-                        {"type": "relevant", 
-                         "distance": dist, 
-                         "adjusted_distance": adjusted_dist, 
-                         "document": doc, 
-                         "metadata": metadata}
+                        {
+                            "type": "relevant",
+                            "distance": dist,
+                            "adjusted_distance": adjusted_dist,
+                            "document": doc,
+                            "metadata": metadata,
+                        }
                     )
                     source = {
-                        "name": metadata.get(
-                        "source", 
-                        "Current Page"
-                        ),
-                        "page": metadata.get("page"), 
-                        "url": metadata.get("url")
+                        "name": metadata.get("source", "Current Page"),
+                        "page": metadata.get("page"),
+                        "url": metadata.get("url"),
                     }
 
                     # Prevent duplicate sources
@@ -230,11 +231,13 @@ def chat_message():
                         sources.append(source)
                 else:
                     debug_chunks.append(
-                        {"type": "unrelevant", 
-                         "distance": dist, 
-                         "adjusted_distance": adjusted_dist, 
-                         "document": doc, 
-                         "metadata": metadata}
+                        {
+                            "type": "unrelevant",
+                            "distance": dist,
+                            "adjusted_distance": adjusted_dist,
+                            "document": doc,
+                            "metadata": metadata,
+                        }
                     )
 
             page_context = "\n\n".join(relevant_documents)
@@ -277,11 +280,7 @@ def chat_message():
 
             # If there are sources, yield them at the end
             for source in sources:
-                yield (
-                    "\n__SOURCE__"
-                    + json.dumps(source)
-                    + "\n"
-                )
+                yield ("\n__SOURCE__" + json.dumps(source) + "\n")
 
         return Response(
             stream_with_context(generate()), content_type="text/plain; charset=utf-8"
@@ -302,20 +301,17 @@ def add_page_to_chroma():
     # Check if this source/page is already in ChromaDB
     if source and page is not None:
         existing = page_collection.get(
-            where={
-                "$and": [
-                    {"source": source},
-                    {"page": page}
-                ]
-            }
+            where={"$and": [{"source": source}, {"page": page}]}
         )
 
         if existing.get("ids"):
-            return jsonify({
-                "success": True,
-                "alreadyExists": True,
-                "message": "Page is already in ChromaDB"
-            })
+            return jsonify(
+                {
+                    "success": True,
+                    "alreadyExists": True,
+                    "message": "Page is already in ChromaDB",
+                }
+            )
 
     if not page_text.strip():
         return jsonify({"error": "No page text supplied"}), 400
@@ -393,8 +389,8 @@ def upload_pdf():
         name = request.form.get("name")
         if not file or not name:
             return jsonify({"error": "File or name not provided"}), 400
-        save_path = os.path.join("files", "default", name)
-        os.makedirs(os.path.join("files", "default"), exist_ok=True)
+        save_path = os.path.join("files", name)
+        os.makedirs(os.path.join("files"), exist_ok=True)
         file.save(save_path)
         return jsonify({"success": True, "message": f"File saved as {save_path}"}), 200
     except Exception as e:
@@ -403,7 +399,7 @@ def upload_pdf():
 
 @app.route("/list-pdfs", methods=["GET"])
 def list_pdfs():
-    folder_path = os.path.join("files", "default")
+    folder_path = os.path.join("files")
     if not os.path.exists(folder_path):
         return jsonify([])
     files = [f for f in os.listdir(folder_path) if f.lower().endswith(".pdf")]
@@ -415,7 +411,7 @@ def delete_pdf():
     name = request.json.get("name")
     if not name:
         return jsonify({"error": "No file name provided"}), 400
-    file_path = os.path.join("files", "default", name)
+    file_path = os.path.join("files", name)
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist"}), 404
     try:

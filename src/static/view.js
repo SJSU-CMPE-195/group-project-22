@@ -165,7 +165,18 @@ function cancelStepIn() {
     }
 }
 
+export function canStepOut() {
+    if (currFileIndex <= 0) {
+        return false;
+    }
+    const prevState = fileStates[currFileIndex - 1];
+    return (prevState && prevState.originLine !== undefined && prevState.originLine !== null);
+}
+
 export async function stepOut() {
+    if (!canStepOut()) {
+        return;
+    }
     clearRelevantLines();
     if (currFileIndex > 0) {
         const prevIndex = currFileIndex - 1;
@@ -266,7 +277,7 @@ export async function loadFile(input, { restoreHighlight = false } = {}) {
     let params = {};
 
     if (input.type === "default") {
-        params.url = `/files/default/${input.name}`;
+        params.url = `/files/${input.name}`;
     }
     else if (input.type === "uploaded" && input.file instanceof File) {
         params.url = URL.createObjectURL(input.file);
@@ -484,6 +495,8 @@ async function getWebPage() {
         const resultObj = await response.json();
         // generate the pdf and load the file.
         alert("link:" + resultObj.link + "text: " + resultObj.text)
+        //link saving to copy into fetch, needs allow first
+        navigator.clipboard.writeText(resultObj.link);
     } catch (error) {
         if (error.name === 'AbortError') {
             console.log("Get webpage operation was aborted.");
@@ -578,6 +591,10 @@ jumpInput.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+        applyTheme(savedTheme === "dark");
+    }
     registerLoadFileCallback(loadFile); // Register the loadFile function as a callback
     registerResetViewCallback(resetView); // Register the resetViewState function as a callback
     const toggleBtn = document.getElementById("togglePdf");
@@ -597,14 +614,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 50);
 });
 
-document.getElementById("themeToggle").addEventListener("click", () => {
+function applyTheme(dark) {
     const body = document.body;
     const sun = document.querySelector(".sun");
     const moon = document.querySelector(".moon");
-    body.classList.toggle("dark");
-    const dark = body.classList.contains("dark");
+    body.classList.toggle("dark", dark);
     sun.classList.toggle("hidden", dark);
     moon.classList.toggle("hidden", !dark);
+    localStorage.setItem(
+        "theme",
+        dark ? "dark" : "light"
+    );
+}
+
+document.getElementById("themeToggle").addEventListener("click", () => {
+    const dark = !document.body.classList.contains("dark");
+    applyTheme(dark);
 });
 
 const contextMenu = document.getElementById("contextMenu");
