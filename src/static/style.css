@@ -1260,3 +1260,80 @@ body.dark .topbar {
 .upload-droparea:hover {
     background: var(--highlight-hover);
 }
+
+.message {
+    background: var(--fab-bg);
+    color: #ffffff;
+    border: none;
+    border-radius: 14px 14px 4px 14px;
+    box-shadow: 0 2px 6px rgba(47, 111, 237, 0.3);
+}
+
+.output-message {
+    border-radius: 14px 14px 14px 4px;
+    line-height: 1.55;
+}
+
+.chat-input {
+    padding: 8px;
+    gap: 8px;
+    background: var(--panel-alt);
+}
+
+.chat-input input {
+    border-radius: 20px;
+    padding: 10px 14px;
+}
+
+.chat-input button {
+    border-radius: 20px;
+    background: var(--fab-bg);
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.chat-input button:hover {
+    background: var(--fab-hover);
+}
+
+::selection {
+    background: rgba(47, 111, 237, 0.3);
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 8px;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--fab-bg);
+    outline-offset: 2px;
+}
+
+#loading-indicator {
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.chat-options-menu,
+.context-menu {
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.chat-option-item:first-child,
+.context-item:first-child {
+    border-radius: 8px 8px 0 0;
+}
