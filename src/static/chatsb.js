@@ -1,7 +1,7 @@
 import { getCurrentPageText, navToPage } from "./view.js";
 import { updateButtons, viewState, fileStates, updateViewState } from "./viewState.js";
 import { setCurrFileIndex, fileInput, showFilesList, highlightSelectedFile, currFileIndex, loadFileByIndex } from "./filepanelupload.js";
-
+import {stepIn} from "./view.js";
 const sidebar = document.getElementById("chatSidebar");
 const openChatBtn = document.getElementById("openChatBtn");
 const closeChatBtn = document.getElementById("closeChatBtn");
@@ -548,9 +548,15 @@ document.addEventListener("mouseup", function () {
 // fetch URL and convert to PDF
 const fetchBtn = document.getElementById('fetch-btn');
 const exportPdfBtn = document.getElementById('export-pdf-btn');
-const fetchUrlInput = document.getElementById('fetch-url');
-const fetchStatus = document.getElementById('fetch-status');
-
+export const fetchUrlInput = document.getElementById('fetch-url');
+ const fetchStatus = document.getElementById('fetch-status');
+ const addtoPdfListButton = document.getElementById('add-to-list-btn');
+export const webPageInput = document.getElementById('webPageStatus');
+webPageInput.addEventListener('click', () => {
+    if(webPageInput.value != "") {
+        fetchBtn.click();
+    }
+});
 fetchBtn.addEventListener('click', async () => {
     const url = fetchUrlInput.value.trim();
     if (!url) { fetchStatus.textContent = 'Please enter a URL.'; return; }
@@ -578,6 +584,9 @@ fetchBtn.addEventListener('click', async () => {
         exportPdfBtn.disabled = false;
         document.getElementById("add-to-list-btn").disabled = false;
         fetchStatus.textContent = 'Page fetched! Ready to export.';
+        if(webPageInput.value != "") {
+           exportPdfBtn.click()
+        }
 
     } catch (err) {
         fetchStatus.textContent = 'Error: ' + err.message;
@@ -596,6 +605,9 @@ exportPdfBtn.addEventListener('click', () => {
     a.click();
     URL.revokeObjectURL(a.href);
     fetchStatus.textContent = 'PDF exported!';
+    if(webPageInput.value != "") {
+        addtoPdfListButton.click()
+    }
 });
 
 document.getElementById("add-to-list-btn").addEventListener("click", async () => {
@@ -670,5 +682,11 @@ document.getElementById("add-to-list-btn").addEventListener("click", async () =>
         document.getElementById("add-to-list-btn").disabled = true;
     } catch (err) {
         fetchStatus.textContent = 'Error uploading PDF: ' + err.message;
+    }
+    if(webPageInput.value != "") {
+        const response = await stepIn();
+        webPageInput.value = "";
+        fetchUrlInput.value = "";
+
     }
 });

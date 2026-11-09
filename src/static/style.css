@@ -237,6 +237,10 @@ body {
     border-radius: 4px;
 }
 
+#webPageStatus{
+    display: none
+}
+
 .icon-btn:hover {
     background: var(--border);
 }
