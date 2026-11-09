@@ -1201,3 +1201,62 @@ body.dark {
     border: 1px solid var(--border);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
+
+.viewer-right {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    padding: 12px 16px;
+}
+
+#textDiv p {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+#textDiv p:hover:not(.nav-highlight):not(.relevant-line) {
+    background-color: var(--highlight-hover);
+}
+
+.file-item {
+    border-radius: 6px;
+}
+
+.upload-droparea {
+    border-radius: 12px;
+}
+
+body {
+    background: linear-gradient(180deg, #eaf0fb 0%, #dce6f8 100%);
+    background-attachment: fixed;
+}
+
+body.dark {
+    background: linear-gradient(180deg, #141a2b 0%, #0e1322 100%);
+    background-attachment: fixed;
+}
+
+.topbar {
+    background: linear-gradient(180deg, #ffffff 0%, #f1f5fd 100%);
+}
+
+body.dark .topbar {
+    background: linear-gradient(180deg, #161d33 0%, #101524 100%);
+}
+
+.chat-header,
+.upload-panel-header {
+    padding-bottom: 10px;
+}
+
+.upload-droparea {
+    border-color: var(--fab-bg);
+    background: var(--bg);
+}
+
+.upload-droparea:hover {
+    background: var(--highlight-hover);
+}
