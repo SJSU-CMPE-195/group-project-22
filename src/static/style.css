@@ -1109,3 +1109,95 @@ body.dark .cancel-btn:hover {
     pointer-events: none;
     cursor: default;
 }
+
+:root {
+    --bg: #eaf0fb;
+    --panel: #f3f6fc;
+    --panel-alt: #ffffff;
+    --border: #c9d6ec;
+    --border-alt: #dbe4f3;
+    --topbar-bg: #ffffff;
+    --accent: #e3ebfa;
+    --accent-hover: #6ba5fc;
+    --fab-bg: #2f6fed;
+    --fab-hover: #1f55c4;
+    --highlight-hover: #e3edff;
+    --highlight-active: #d0e1ff;
+    --highlight-selected: #bdd4ff;
+}
+
+body.dark {
+    --bg: #141a2b;
+    --panel: #1b2338;
+    --panel-alt: #222c45;
+    --border: #2f3b5c;
+    --border-alt: #3a4768;
+    --topbar-bg: #101524;
+    --accent: #2a3555;
+    --accent-hover: #335ee6;
+    --fab-bg: #5b8cff;
+    --fab-hover: #3f6fe6;
+    --highlight-active: rgba(255, 255, 255, 0.12);
+}
+
+.topbar {
+    border-bottom: 2px solid var(--fab-bg);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+}
+
+.viewer-buttons button,
+.themed-btn {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease,
+                transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.viewer-buttons > button:hover:not(:disabled),
+.themed-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(47, 111, 237, 0.35);
+}
+
+.viewer-buttons button:disabled,
+.themed-btn:disabled {
+    box-shadow: none;
+}
+
+#fetch-section input {
+    border-radius: 8px;
+}
+
+#fetch-section input:focus,
+#jumpInput:focus,
+.chat-input input:focus {
+    box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.25);
+}
+
+#pdf {
+    border: none !important;
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.sidebar-left,
+.sidebar-right {
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.2);
+}
+
+.chat-fab,
+.upload-fab {
+    box-shadow: 0 6px 16px rgba(47, 111, 237, 0.45);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease,
+                transform 0.15s ease;
+}
+
+.chat-fab:hover,
+.upload-fab:hover {
+    transform: scale(1.06);
+}
+
+.message,
+.output-message {
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
