@@ -2,7 +2,7 @@ import * as pdfjsLib from 'https://mozilla.github.io/pdf.js/build/pdf.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
 import { fileInput, currFileIndex, registerLoadFileCallback, highlightSelectedFile, setCurrFileIndex, registerResetViewCallback } from "./filepanelupload.js";
 import { viewState, updateViewState, resetViewState as resetGlobalViewState, updateButtons, fileStates, saveSession, restoreSession } from "./viewState.js";
-
+import {webPageInput, fetchUrlInput} from './chatsb.js'
 const scale = 1;
 const canvas = document.getElementById("pdf");
 const context = canvas.getContext("2d");
@@ -61,7 +61,8 @@ export async function stepIn() {
 
             await loadFile(nextFile);
             highlightSelectedFile();
-
+            let resultObj = null
+            if(webPageInput.value == "") {
             const response = await fetch("/stepIn", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -71,11 +72,27 @@ export async function stepIn() {
                 }),
                 signal
             });
-            const resultObj = await response.json();
+            resultObj = await response.json();
             console.log("pageNum:", resultObj.pageNum);
             console.log("pageText:", resultObj.pageText);
             console.log("relevantText:", resultObj.text);
-
+            }
+            else {
+                //setting up the result obj for webpage step in.
+                // all the other code should work the same as aaron's.
+                pageNumber = findPageByText(webPage.value);
+                if(pageNumber == -1) {
+                    alert("No page match found for this webpage pdf");
+                    return;
+                }
+                pageStuff = await getPageData(pdf, pageNumber);
+                resultObj = {
+                    pageText: pageStuff.text,
+                    pageNum: pageNumber,
+                    text: webPage.value
+                };
+            }
+            
             if (!resultObj || typeof resultObj.text !== "string") {
                 alert("Invalid response from server.");
                 return;
@@ -495,8 +512,9 @@ async function getWebPage() {
         const resultObj = await response.json();
         // generate the pdf and load the file.
         alert("link:" + resultObj.link + "text: " + resultObj.text)
-        //link saving to copy into fetch, needs allow first
-        navigator.clipboard.writeText(resultObj.link);
+        fetchUrlInput.value = resultObj.link
+        webPageInput.value = resultObj.text
+        webPageInput.click()
     } catch (error) {
         if (error.name === 'AbortError') {
             console.log("Get webpage operation was aborted.");
