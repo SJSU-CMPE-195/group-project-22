@@ -12,6 +12,12 @@
 </head>
 
 <body>
+    <!-- Tab Bar -->
+    <div id="tabStrip">
+    <div id="tabBar"></div>
+    <button id="newTabBtn">+ Tab</button>
+    </div>
+
     <!-- Interaction Blocker and Loading Indicator -->
     <div id="interaction-blocker" class="hidden"></div>
     <div id="loading-indicator" class="hidden">
@@ -38,7 +44,7 @@
     <!-- Top Header -->
     <div class="topbar">
         <div class="topbar-title">🔍 Learning<span style="color: #4f8ef7;">Debugger</span></div>
-        
+
         <div class="viewer-buttons">
             <select id="file-dropdown"></select>
             <div class="cluster line-cluster">
@@ -76,6 +82,16 @@
     <!-- File Upload Panel -->
     <div class="sidebar-left" id="fileUploadPanel">
         <div class="upload-resize-handle"></div>
+
+        <div id="courseFolderSetup">
+            <textarea id="scheduleInput" placeholder="Input schedule here"></textarea>
+            <input type="file" id="schedulePdfInput" accept=".pdf">
+            <button id="generateFoldersBtn">
+                Generate Course Folders
+            </button>
+        </div>
+
+        <div id="folderContainer"></div>
     </div>
 
     <!-- Main Content -->

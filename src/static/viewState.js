@@ -1,5 +1,7 @@
-import { currFileIndex, fileInput, setCurrFileIndex, loadFileByIndex, showFilesList } from './filepanelupload.js';
+import { folders, getFolderData, restoreFolders, assignAllFiles, renderFolders } from './courseFolders.js';
+import { currFileIndex, fileInput, setCurrFileIndex, loadFileByIndex, showFilesList, refreshFolders } from './filepanelupload.js';
 import { canStepOut } from './view.js';
+import { tabs, activeTabId, restoreTabs } from './tabs.js';
 
 export const viewState = {
     pdf: null,
@@ -120,7 +122,11 @@ export function saveSession() {
             scroll: state.scroll,
             pdfVisible: state.pdfVisible,
             originLine: state.originLine
-        }))
+        })),
+        folders:
+            getFolderData(),
+        tabs,
+        activeTabId
     }));
 }
 
@@ -161,6 +167,16 @@ export async function restoreSession() {
         Object.assign(fileStates[i], savedState);
     });
     showFilesList();
+    if (session.folders && session.folders.length > 0) {
+        restoreFolders(session.folders);
+        assignAllFiles(fileInput);
+        if (session.tabs) {
+            restoreTabs(
+                session.tabs,
+                session.activeTabId
+            );
+        }
+    }
     setCurrFileIndex(session.currentFileIndex);
     console.log(
         "Restoring state:",
@@ -169,6 +185,7 @@ export async function restoreSession() {
     await loadFileByIndex(session.currentFileIndex, { restoreHighlight: true });
     console.log("Restoring:", session.currentFileIndex);
     console.log("Restoring states:", fileStates[session.currentFileIndex]);
+    refreshFolders();
 }
 
 export function clearSession() {

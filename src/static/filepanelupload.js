@@ -1,4 +1,5 @@
-import { fileStates, initFileStates } from "./viewState.js";
+import { fileStates, initFileStates, saveSession } from "./viewState.js";
+import { buildCourseWorkspace, clearFolders, genFoldersFromPDF, renderFolders, folders, assignAllFiles } from "./courseFolders.js";
 
 let draggingItem = null;
 export let resetViewCallback = null;
@@ -60,6 +61,143 @@ function closeUpload() {
     openUploadBtn.classList.remove("hidden");
 }
 
+export function refreshFolders() {
+
+    if (folders.length === 0) {
+        return;
+    }
+
+    assignAllFiles(fileInput);
+
+    renderFolders(
+        document.getElementById(
+            "folderContainer"
+        ),
+        async file => {
+            const index =
+                fileInput.findIndex(
+                    f => f.id === file.id
+                );
+
+            if (index >= 0) {
+                await loadFileByIndex(index);
+            }
+        },
+        file => {
+            removeFile(file.id);
+        },
+        file => {
+            moveFileUp(file.id);
+        },
+        file => {
+            moveFileDown(file.id);
+        }
+    );
+}
+
+function setupPanelControls() {
+    document
+        .getElementById("closeUploadBtn")
+        .addEventListener("click", closeUpload);
+}
+
+function setupFolderControls() {
+
+    const pdfInput =
+        document.getElementById(
+            "schedulePdfInput"
+        );
+
+    let selectedSchedulePdf = null;
+
+    pdfInput.addEventListener("change", e => {
+
+        selectedSchedulePdf =
+            e.target.files[0];
+
+        const label =
+            document.getElementById(
+                "schedulePdfLabel"
+            );
+
+        label.textContent =
+            selectedSchedulePdf
+                ? selectedSchedulePdf.name
+                : "None selected";
+    });
+
+    const genBtn =
+        document.getElementById(
+            "generateFoldersBtn"
+        );
+
+    genBtn.addEventListener(
+        "click",
+        async () => {
+
+            const text =
+                document.getElementById(
+                    "scheduleInput"
+                ).value.trim();
+
+            if (text) {
+
+                buildCourseWorkspace(
+                    text,
+                    fileInput
+                );
+
+            }
+
+            else if (
+                selectedSchedulePdf
+            ) {
+
+                await genFoldersFromPDF(
+                    selectedSchedulePdf
+                );
+
+                assignAllFiles(
+                    fileInput
+                );
+
+            }
+
+            else {
+
+                alert(
+                    "Provide schedule text or PDF."
+                );
+
+                return;
+            }
+
+            refreshFolders();
+            saveSession();
+        }
+    );
+
+    const clearBtn =
+        document.getElementById(
+            "clearFoldersBtn"
+        );
+
+    clearBtn.addEventListener(
+        "click",
+        () => {
+
+            clearFolders();
+
+            document.getElementById(
+                "folderContainer"
+            ).innerHTML = "";
+
+            saveSession();
+
+        }
+    );
+}
+
 function initToggle() {
     filesPanel.innerHTML = `
     <div class="upload-panel">
@@ -70,11 +208,42 @@ function initToggle() {
         </div>
         <div class="upload-droparea" id="dropArea">Drag & Drop files here or click to select</div>
         <input type="file" id="fileInput" multiple style="display: none;">
-        <div class="upload-fileslist" id="filesList"></div>
-    </div>`;
+        <textarea id="scheduleInput" placeholder="Input schedule here"></textarea>
+        <button id="chooseScheduleBtn" class="schedule-upload-btn">
+            Choose Schedule PDF
+        </button>
+        <span id="schedulePdfLabel">
+            None selected
+        </span>
+        <input
+            type="file"
+            id="schedulePdfInput"
+            accept=".pdf"
+            style="display:none;">
+        <button id="generateFoldersBtn">
+            Generate Course Folders
+        </button>
+        <button id="clearFoldersBtn">
+            Remove All Course Folders
+        </button>
+        <div id="folderContainer"></div>
+            <div class="upload-fileslist" id="filesList"></div>
+        </div>`;
 
     document.getElementById("closeUploadBtn").addEventListener("click", closeUpload);
+    document.getElementById(
+        "chooseScheduleBtn"
+    ).addEventListener("click", () => {
 
+        document
+            .getElementById(
+                "schedulePdfInput"
+            )
+            .click();
+
+    });
+    setupPanelControls();
+    setupFolderControls();
     setupFileUpload();
     setupUploadResize();
     setupZIndex();
@@ -224,6 +393,35 @@ function setupListEvents() {
     });
 }
 
+export function moveFileUp(id) {
+    const index = fileInput.findIndex(f => f.id === id);
+    console.log("MOVE-UP: index =", index, "id =", id);
+    if (index <= 0) {
+        return;
+    }
+    [fileInput[index - 1], fileInput[index]] = [fileInput[index], fileInput[index - 1]];
+    [fileStates[index - 1], fileStates[index]] = [fileStates[index], fileStates[index - 1]];
+    setCurrFileIndex(index - 1);
+    showFilesList();
+    refreshFolders();
+    saveSession();
+    loadFileByIndex(currFileIndex);
+}
+
+export function moveFileDown(id) {
+    const index = fileInput.findIndex(f => f.id === id);
+    if (index === -1 || index >= fileInput.length - 1) {
+        return;
+    }
+    [fileInput[index + 1], fileInput[index]] = [fileInput[index], fileInput[index + 1]];
+    [fileStates[index + 1], fileStates[index]] = [fileStates[index], fileStates[index + 1]];
+    setCurrFileIndex(index + 1);
+    showFilesList();
+    refreshFolders();
+    saveSession();
+    loadFileByIndex(currFileIndex);
+}
+
 function getDragAfterElement(container, y) {
     const draggableElements = [...container.querySelectorAll(".file-item:not(.dragging)")];
 
@@ -260,6 +458,7 @@ async function removeFile(id) {
         currFileIndex = Math.max(0, currFileIndex - 1);
     }
     showFilesList();
+    refreshFolders();
     loadFileByIndex(currFileIndex);
 }
 
@@ -310,6 +509,7 @@ async function handleFileSelect(event) {
         });
     }
     showFilesList();
+    refreshFolders();
 }
 
 async function setupFileUpload() {
@@ -330,7 +530,7 @@ export async function loadFileByIndex(index, options = {}) {
     if (entry.file instanceof File && entry.type !== "uploaded") {
         entry.type = "uploaded";
     }
-    currFileIndex = index;    
+    currFileIndex = index;
     console.log("LOAD-BY-INDEX: currFileIndex AFTER SET =", currFileIndex);
 
     if (!fileStates[index]) {

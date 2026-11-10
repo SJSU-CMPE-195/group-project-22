@@ -2,6 +2,7 @@
     --sidebar-width: 320px;
     --topbar-height: 50px;
     --upload-sidebar-width: 320px;
+    --tabbar-height: 40px;
 
     --bg: #ffffff;
     --text: #000000;
@@ -244,7 +245,10 @@ body {
 /* Main Content */
 .content {
     padding: 20px;
-    margin-top: var(--topbar-height);
+    margin-top: calc(
+        var(--topbar-height) +
+        var(--tabbar-height)
+    )
 }
 
 /* Floating chat button */
@@ -1108,4 +1112,70 @@ body.dark .cancel-btn:hover {
     opacity: 0.5;
     pointer-events: none;
     cursor: default;
+}
+
+.folder-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.folder-name:hover {
+    background: var(--highlight-hover);
+}
+
+.folder-files {
+    margin-left: 16px;
+}
+
+#scheduleInput {
+    resize: none;
+    width: 100%;
+    height: 80px;
+    box-sizing: border-box;
+}
+
+#folderContainer {
+    margin-top: 8px;
+}
+
+.schedule-upload-btn,
+#generateFoldersBtn,
+#clearFoldersBtn {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+}
+
+#tabStrip {
+    position: fixed;
+
+    top: var(--topbar-height);
+
+    left: 0;
+    right: 0;
+
+    height: var(--tabbar-height);
+
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 0 12px;
+
+    background: var(--panel);
+
+    border-bottom: 1px solid var(--border);
+
+    z-index: 998;
+}
+
+#tabBar {
+    display: flex;
+    gap: 6px;
+    flex: 1;
 }

@@ -1,7 +1,12 @@
 import * as pdfjsLib from 'https://mozilla.github.io/pdf.js/build/pdf.mjs';
+console.log(
+    "PDF.js Version:",
+    pdfjsLib.version
+);
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
 import { fileInput, currFileIndex, registerLoadFileCallback, highlightSelectedFile, setCurrFileIndex, registerResetViewCallback } from "./filepanelupload.js";
 import { viewState, updateViewState, resetViewState as resetGlobalViewState, updateButtons, fileStates, saveSession, restoreSession } from "./viewState.js";
+import { tabs, createTab, renderTabs } from "./tabs.js";
 
 const scale = 1;
 const canvas = document.getElementById("pdf");
@@ -593,23 +598,52 @@ jumpInput.addEventListener("keydown", (e) => {
 document.addEventListener("DOMContentLoaded", () => {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme) {
-        applyTheme(savedTheme === "dark");
+        applyTheme(
+            savedTheme === "dark"
+        );
     }
-    registerLoadFileCallback(loadFile); // Register the loadFile function as a callback
-    registerResetViewCallback(resetView); // Register the resetViewState function as a callback
-    const toggleBtn = document.getElementById("togglePdf");
-    const pdfContainer = document.querySelector(".viewer-left");
-    const viewer = document.querySelector(".viewer-container");
-
-    toggleBtn.addEventListener("click", function () {
-        const hidden = pdfContainer.style.display === "none";
-        pdfContainer.style.display = hidden ? "block" : "none";
-        viewer.classList.toggle("single-column", !hidden);
-    });
+    registerLoadFileCallback(loadFile);
+    registerResetViewCallback(resetView);
+    const toggleBtn =
+        document.getElementById(
+            "togglePdf"
+        );
+    const pdfContainer =
+        document.querySelector(
+            ".viewer-left"
+        );
+    const viewer =
+        document.querySelector(
+            ".viewer-container"
+        );
+    toggleBtn.addEventListener(
+        "click",
+        function () {
+            const hidden =
+                pdfContainer.style.display === "none";
+            pdfContainer.style.display =
+                hidden ? "block" : "none";
+            viewer.classList.toggle(
+                "single-column",
+                !hidden
+            );
+        }
+    );
     const waitForPdf = setInterval(async () => {
         if (fileInput && fileInput.length > 0) {
             clearInterval(waitForPdf);
             await restoreSession();
+            const tabBar = document.getElementById("tabBar");
+            if (tabBar) {
+                renderTabs(tabBar);
+                document.getElementById("newTabBtn")
+                    ?.addEventListener("click",() => {
+                        createTab(`Tab ${tabs.length + 1}`);
+                        saveSession();
+                        renderTabs(tabBar);
+                    }
+                );
+            }
         }
     }, 50);
 });
