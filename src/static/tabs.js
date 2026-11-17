@@ -66,7 +66,7 @@ export async function switchTab(tabId, restoring = false) {
         fileStates[fileIndex].line = tab.line;
         fileStates[fileIndex].scroll = tab.scroll;
         setCurrFileIndex(fileIndex);
-        await loadFileByIndex(fileIndex);
+        await loadFileByIndex(fileIndex, { restoreHighlight: true });
     }
     return tab;
 }

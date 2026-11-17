@@ -688,8 +688,12 @@ document.getElementById("themeToggle").addEventListener("click", () => {
 });
 
 const contextMenu = document.getElementById("contextMenu");
+let contextLineIndex = -1;
 textDiv.addEventListener("contextmenu", (e) => {
     e.preventDefault();
+    const line = e.target.closest("p");
+    if (!line) return;
+    contextLineIndex = Array.from(textDiv.childNodes).indexOf(line);
     contextMenu.style.left = `${e.clientX}px`;
     contextMenu.style.top = `${e.clientY}px`;
     contextMenu.classList.remove("hidden");
@@ -709,6 +713,33 @@ document.getElementById("menu-stepout")
     .addEventListener("click", () => {
         contextMenu.classList.add("hidden");
         stepOut();
+    });
+
+document.getElementById("menu-setline")
+    .addEventListener("click", () => {
+        contextMenu.classList.add("hidden");
+        if (contextLineIndex < 0) return;
+
+        if (viewState.numTimes === contextLineIndex) {
+            const lines = textDiv.childNodes;
+            if (
+                viewState.numTimes >= 0 && 
+                viewState.numTimes < lines.length
+            ) {
+                lines[viewState.numTimes]
+                    .classList.remove(
+                        "nav-highlight",
+                        "highlight-overlap"
+                    );
+            }
+            updateViewState({ numTimes: -1 });
+            fileStates[currFileIndex].line = -1;
+            saveCurrentTabState();
+            saveSession();
+            return;
+        }
+        highlightLine(contextLineIndex);
+        updateButtons();
     });
 
 document.getElementById("menu-nextline")
