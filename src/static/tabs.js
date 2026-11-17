@@ -6,19 +6,18 @@ export let tabs = [];
 export let activeTabId = null;
 
 export function createTab(name) {
-
+    saveCurrentTabState();
     const tab = {
         id: crypto.randomUUID(),
         name,
         fileId: fileInput[currFileIndex]?.id || null,
+        fileName: fileInput[currFileIndex]?.name || null,
         page: fileStates[currFileIndex]?.page ?? 1,
         line: fileStates[currFileIndex]?.line ?? -1,
         scroll: fileStates[currFileIndex]?.scroll ?? 0
     };
-
     tabs.push(tab);
     activeTabId = tab.id;
-    saveCurrentTabState();
     return tab;
 }
 
@@ -37,9 +36,11 @@ export function setActiveTabId(id) {
     activeTabId = id;
 }
 
-export async function switchTab(tabId) {
-
-    saveCurrentTabState();
+export async function switchTab(tabId, restoring = false) {
+    console.log("switchTab called", tabId);
+    if (!restoring) {
+        saveCurrentTabState();
+    }
     const tab =
         tabs.find(
             t => t.id === tabId
@@ -52,6 +53,8 @@ export async function switchTab(tabId) {
         fileInput.findIndex(
             f => f.id === tab.fileId
         );
+    console.log("fileIndex", fileIndex);
+    console.log("fileId", tab.fileId);
     if (fileIndex >= 0) {
         fileStates[fileIndex].page = tab.page;
         fileStates[fileIndex].line = tab.line;
@@ -140,11 +143,25 @@ export function renderTabs(container) {
 
 export function saveCurrentTabState() {
     const tab = tabs.find(t => t.id === activeTabId);
+    console.log(
+        "saving into active tab",
+        activeTabId
+    );
+    console.log(
+        "before save",
+        structuredClone(tab)
+    );
+
     if (!tab) { return; }
     tab.fileId = fileInput[currFileIndex]?.id ?? null;
+    tab.fileName = fileInput[currFileIndex]?.name ?? null;
     tab.page = fileStates[currFileIndex]?.page ?? 1;
     tab.line = fileStates[currFileIndex]?.line ?? -1;
     tab.scroll = fileStates[currFileIndex]?.scroll ?? 0;
+    console.log(
+        "after save",
+        structuredClone(tab)
+    );
 }
 
 export function removeTab(tabId) {

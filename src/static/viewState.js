@@ -1,7 +1,7 @@
 import { folders, getFolderData, restoreFolders, assignAllFiles, renderFolders } from './courseFolders.js';
 import { currFileIndex, fileInput, setCurrFileIndex, loadFileByIndex, showFilesList, refreshFolders } from './filepanelupload.js';
 import { canStepOut } from './view.js';
-import { tabs, activeTabId, restoreTabs } from './tabs.js';
+import { tabs, activeTabId, restoreTabs, switchTab } from './tabs.js';
 
 export const viewState = {
     pdf: null,
@@ -167,24 +167,31 @@ export async function restoreSession() {
         Object.assign(fileStates[i], savedState);
     });
     showFilesList();
-    if (session.folders && session.folders.length > 0) {
+    if (session.folders?.length > 0) {
         restoreFolders(session.folders);
         assignAllFiles(fileInput);
-        if (session.tabs) {
-            restoreTabs(
-                session.tabs,
-                session.activeTabId
-            );
+    }
+    if (session.tabs?.length > 0) {
+        console.log("session activeTabId", session.activeTabId);
+        restoreTabs(
+            session.tabs,
+            session.activeTabId
+        );
+        console.log("tabs after restore", tabs);
+        console.log("activeTab after restore", activeTabId);
+        const activeTab = tabs.find(t => t.id === session.activeTabId);
+        console.log("found active tab", activeTab);
+        if (activeTab) {
+            await switchTab(activeTab.id, true);
         }
     }
-    setCurrFileIndex(session.currentFileIndex);
-    console.log(
-        "Restoring state:",
-        session.fileStates[session.currentFileIndex]
-    );
-    await loadFileByIndex(session.currentFileIndex, { restoreHighlight: true });
-    console.log("Restoring:", session.currentFileIndex);
-    console.log("Restoring states:", fileStates[session.currentFileIndex]);
+    else {
+        setCurrFileIndex(session.currentFileIndex);
+        console.log("Restoring state:", session.fileStates[session.currentFileIndex]);
+        await loadFileByIndex(session.currentFileIndex, { restoreHighlight: true });
+        console.log("Restoring:", session.currentFileIndex);
+        console.log("Restoring states:", fileStates[session.currentFileIndex]);
+    }
     refreshFolders();
 }
 
