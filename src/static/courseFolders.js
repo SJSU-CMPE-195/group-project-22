@@ -48,11 +48,7 @@ export function extractCoursesFromFileName(fileName) {
 }
 
 export function ensureFolderExists(course) {
-
-    if (!course) {
-        return;
-    }
-
+    if (!course) { return;}
     if (
         folders.some(
             f => f.name === course
@@ -83,12 +79,10 @@ export function createFolders(courseList) {
     courseList.forEach(course => {
 
         if (!existing.has(course)) {
-
             folders.push({
                 name: course,
                 files: []
             });
-
         }
     });
 
@@ -130,7 +124,6 @@ export async function extractTextFromPDF(pdfFile) {
 
         text += "\n";
     }
-
     return text;
 }
 
@@ -144,9 +137,7 @@ export function genFoldersFromText(scheduleText) {
     const courses = extractCourses(scheduleText);
     console.log("Extracted:", courses);
     console.log("Before:", folders.map(f => f.name));
-
     createFolders(courses);
-
     console.log("After:", folders.map(f => f.name));
     return folders;
 }
@@ -206,18 +197,11 @@ export function renderFolders(container, onFileClick, onDeleteFile, onMoveUp, on
         title.textContent = `📁 ${folder.name}`;
         const fileList = document.createElement("div");
         fileList.className = "folder-files";
-        const isExpanded =
-            expandedFolders.has(folder.name);
-
-        fileList.style.display =
-            isExpanded ? "block" : "none";
-
+        const isExpanded = expandedFolders.has(folder.name);
+        fileList.style.display = isExpanded ? "block" : "none";
         title.textContent =
             `${isExpanded ? "📂" : "📁"} ${folder.name}`;
-        const removeBtn =
-            document.createElement(
-                "button"
-            );
+        const removeBtn =document.createElement("button");
         removeBtn.textContent = "✖";
         removeBtn.className = "remove-folder-btn";
         removeBtn.addEventListener("click", e => {
@@ -354,9 +338,7 @@ export function clearFolders() {
     expandedFolders.clear();
 }
 
-export function removeFolder(
-    folderName
-) {
+export function removeFolder(folderName) {
 
     const index =
         folders.findIndex(
@@ -365,11 +347,7 @@ export function removeFolder(
                 folderName
         );
 
-    if (
-        index >= 0 &&
-        folderName !== "Unsorted"
-    ) {
-
+    if (index >= 0 && folderName !== "Unsorted") {
         folders.splice(
             index,
             1

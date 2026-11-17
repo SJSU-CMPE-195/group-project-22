@@ -49,10 +49,16 @@ export async function switchTab(tabId, restoring = false) {
         return;
     }
     activeTabId = tabId;
-    const fileIndex =
+    let fileIndex =
         fileInput.findIndex(
             f => f.id === tab.fileId
         );
+    if (fileIndex < 0) {
+        fileIndex =
+            fileInput.findIndex(
+                f => f.name === tab.fileName
+            );
+    }
     console.log("fileIndex", fileIndex);
     console.log("fileId", tab.fileId);
     if (fileIndex >= 0) {
@@ -72,9 +78,7 @@ export function updateActiveTabState(data) {
             t => t.id === activeTabId
         );
 
-    if (!tab) {
-        return;
-    }
+    if (!tab) { return; }
 
     Object.assign(
         tab,
@@ -88,20 +92,11 @@ export function renderTabs(container) {
 
     tabs.forEach(tab => {
 
-        const tabDiv =
-            document.createElement("div");
-
-        const tabBtn =
-            document.createElement("button");
-
-        const closeBtn =
-            document.createElement("button");
-
-        tabBtn.textContent =
-            tab.name;
-
-        closeBtn.textContent =
-            "✕";
+        const tabDiv = document.createElement("div");
+        const tabBtn = document.createElement("button");
+        const closeBtn = document.createElement("button");
+        tabBtn.textContent = tab.name;
+        closeBtn.textContent = "✕";
 
         if (tab.id === activeTabId) {
             tabBtn.classList.add(
@@ -112,32 +107,42 @@ export function renderTabs(container) {
         tabBtn.addEventListener(
             "click",
             async () => {
-
                 await switchTab(tab.id);
-
                 renderTabs(container);
+            }
+        );
 
+        tabBtn.addEventListener(
+            "contextmenu",
+            (e) => {
+                e.preventDefault();
+
+                const newName =
+                    prompt(
+                        "Rename tab",
+                        tab.name
+                    );
+
+                if (!newName?.trim()) { return; }
+
+                tab.name = newName.trim();
+                saveSession();
+                renderTabs(container);
             }
         );
 
         closeBtn.addEventListener(
             "click",
             e => {
-
                 e.stopPropagation();
-
                 removeTab(tab.id);
-
                 renderTabs(container);
-
             }
         );
 
         tabDiv.appendChild(tabBtn);
         tabDiv.appendChild(closeBtn);
-
         container.appendChild(tabDiv);
-
     });
 }
 

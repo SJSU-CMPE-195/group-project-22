@@ -141,34 +141,19 @@ function setupFolderControls() {
                 ).value.trim();
 
             if (text) {
-
                 buildCourseWorkspace(
                     text,
                     fileInput
                 );
-
             }
 
-            else if (
-                selectedSchedulePdf
-            ) {
-
-                await genFoldersFromPDF(
-                    selectedSchedulePdf
-                );
-
-                assignAllFiles(
-                    fileInput
-                );
-
+            if (selectedSchedulePdf) {
+                await genFoldersFromPDF(selectedSchedulePdf);
+                assignAllFiles(fileInput);
             }
 
             else {
-
-                alert(
-                    "Provide schedule text or PDF."
-                );
-
+                alert("Provide schedule text or PDF.");
                 return;
             }
 
@@ -185,15 +170,9 @@ function setupFolderControls() {
     clearBtn.addEventListener(
         "click",
         () => {
-
             clearFolders();
-
-            document.getElementById(
-                "folderContainer"
-            ).innerHTML = "";
-
+            document.getElementById("folderContainer").innerHTML = "";
             saveSession();
-
         }
     );
 }
@@ -208,7 +187,7 @@ function initToggle() {
         </div>
         <div class="upload-droparea" id="dropArea">Drag & Drop files here or click to select</div>
         <input type="file" id="fileInput" multiple style="display: none;">
-        <textarea id="scheduleInput" placeholder="Input schedule here"></textarea>
+        <textarea id="scheduleInput" placeholder="Enter courses here (e.g., FA: CS-123)"></textarea>
         <button id="chooseScheduleBtn" class="schedule-upload-btn">
             Choose Schedule PDF
         </button>
@@ -226,21 +205,19 @@ function initToggle() {
         <button id="clearFoldersBtn">
             Remove All Course Folders
         </button>
+        <div class="section-title">
+            Step-In Navigation Order
+        </div>
+        <div class="upload-fileslist" id="filesList"></div>
         <div id="folderContainer"></div>
-            <div class="upload-fileslist" id="filesList"></div>
         </div>`;
+
 
     document.getElementById("closeUploadBtn").addEventListener("click", closeUpload);
     document.getElementById(
         "chooseScheduleBtn"
     ).addEventListener("click", () => {
-
-        document
-            .getElementById(
-                "schedulePdfInput"
-            )
-            .click();
-
+        document.getElementById("schedulePdfInput").click();
     });
     setupPanelControls();
     setupFolderControls();

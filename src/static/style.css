@@ -68,7 +68,7 @@ body {
 .file-item,
 .viewer-buttons button,
 .chat-input,
-.chat-input input, 
+.chat-input input,
 .chat-fab,
 .upload-fab,
 .chat-fab:hover,
@@ -119,16 +119,16 @@ body {
 .sidebar-left,
 .sidebar-right {
     transition: transform 0.3s ease,
-                background-color 0.3s ease,
-                color 0.3s ease,
-                border-color 0.3s ease;
+        background-color 0.3s ease,
+        color 0.3s ease,
+        border-color 0.3s ease;
 }
 
 .sidebar-left *,
 .sidebar-right * {
     transition: background-color 0.3s ease,
-                color 0.3s ease,
-                border-color 0.3s ease;
+        color 0.3s ease,
+        border-color 0.3s ease;
 }
 
 .viewer-buttons {
@@ -238,7 +238,7 @@ body {
     border-radius: 4px;
 }
 
-#webPageStatus{
+#webPageStatus {
     display: none
 }
 
@@ -249,10 +249,7 @@ body {
 /* Main Content */
 .content {
     padding: 20px;
-    margin-top: calc(
-        var(--topbar-height) +
-        var(--tabbar-height)
-    )
+    margin-top: calc(var(--topbar-height) + var(--tabbar-height))
 }
 
 /* Floating chat button */
@@ -297,9 +294,9 @@ body {
     box-sizing: border-box;
     transform: translateX(100%);
     transition: transform 0.3s ease,
-                background-color 0.3s ease,
-                color 0.3s ease,
-                border-color 0.3s ease;
+        background-color 0.3s ease,
+        color 0.3s ease,
+        border-color 0.3s ease;
     overflow: hidden;
 }
 
@@ -716,9 +713,9 @@ body {
     box-sizing: border-box;
     transform: translateX(-100%);
     transition: transform 0.3s ease,
-                background-color 0.3s ease,
-                color 0.3s ease,
-                border-color 0.3s ease;
+        background-color 0.3s ease,
+        color 0.3s ease,
+        border-color 0.3s ease;
     overflow-y: auto;
     padding: 15px;
 }
@@ -1072,7 +1069,7 @@ body.dark .cancel-btn:hover {
     cursor: text;
 }
 
-.viewer-blocked  {
+.viewer-blocked {
     cursor: not-allowed;
 }
 
@@ -1157,10 +1154,10 @@ body.dark {
 .themed-btn {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease,
-                transform 0.15s ease, box-shadow 0.15s ease;
+        transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.viewer-buttons > button:hover:not(:disabled),
+.viewer-buttons>button:hover:not(:disabled),
 .themed-btn:hover:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: 0 4px 10px rgba(47, 111, 237, 0.35);
@@ -1196,7 +1193,7 @@ body.dark {
 .upload-fab {
     box-shadow: 0 6px 16px rgba(47, 111, 237, 0.45);
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease,
-                transform 0.15s ease;
+        transform 0.3s ease;
 }
 
 .chat-fab:hover,
@@ -1378,13 +1375,159 @@ input:focus-visible {
     flex: 1;
 }
 
-#tabBar button {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 10px;
-}
-
 .active-tab {
     background: var(--highlight-selected) !important;
+}
+
+#tabBar button:hover,
+#newTabBtn:hover {
+    background: var(--accent-hover);
+}
+
+#scheduleInput,
+#chooseScheduleBtn,
+#generateFoldersBtn,
+#clearFoldersBtn {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+}
+
+#chooseScheduleBtn,
+#generateFoldersBtn,
+#clearFoldersBtn,
+#newTabBtn, #tabBar button {
+    background: var(--panel);
+    color: var(--text);
+
+    border: 1px solid var(--border);
+
+    border-radius: 8px;
+
+    padding: 8px 12px;
+
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.2);
+
+    transition:
+        background-color 0.3s ease,
+        color 0.3s ease,
+        border-color 0.3s ease,
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
+}
+
+#chooseScheduleBtn:hover,
+#generateFoldersBtn:hover,
+#clearFoldersBtn:hover,
+#newTabBtn:hover {
+
+    background: var(--accent-hover);
+
+    transform: translateY(-1px);
+}
+
+.course-folder {
+    border-bottom: 1px solid var(--border-alt);
+}
+
+.folder-name {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition:
+        background-color 0.2s ease;
+}
+
+.folder-name:hover {
+    background: var(--highlight-hover);
+}
+
+.remove-folder-btn {
+    border: none;
+    background: transparent;
+    color: #d9534f;
+    cursor: pointer;
+    border-radius: 4px;
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
+}
+
+.remove-folder-btn:hover {
+    background: rgba(217, 83, 79, 0.15);
+    color: #ff5555;
+}
+
+.folder-up-btn,
+.folder-down-btn,
+.folder-remove-btn {
+    background: var(--panel);
+    color: var(--text);
+
+    border: 1px solid var(--border);
+
+    border-radius: 6px;
+
+    width: 24px;
+    height: 24px;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.3s ease,
+        border-color 0.3s ease,
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
+
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.folder-up-btn:hover,
+.folder-down-btn:hover {
+    background: var(--highlight-hover);
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 4px 10px rgba(47, 111, 237, 0.25);
+}
+
+.folder-remove-btn:hover {
+    background: rgba(255, 85, 85, 0.12);
+    color: #ff5555;
+    transform: translateY(-1px);
+    box-shadow:
+        0 4px 10px rgba(255, 85, 85, 0.25);
+}
+
+body,
+body *,
+body *::before,
+body *::after {
+    transition:
+        background 0.3s ease,
+        background-color 0.3s ease,
+        color 0.3s ease,
+        border-color 0.3s ease,
+        box-shadow 0.3s ease;
+}
+
+#filesList {
+    margin-bottom: 20px;
+}
+
+.sidebar-left,
+.sidebar-right {
+    top: calc(var(--topbar-height) + var(--tabbar-height));
+
+    height: calc(
+        100vh
+        - var(--topbar-height)
+        - var(--tabbar-height)
+    );
 }
