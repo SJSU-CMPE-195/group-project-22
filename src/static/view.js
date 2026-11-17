@@ -6,7 +6,7 @@ console.log(
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.mjs';
 import { fileInput, currFileIndex, registerLoadFileCallback, highlightSelectedFile, setCurrFileIndex, registerResetViewCallback } from "./filepanelupload.js";
 import { viewState, updateViewState, resetViewState as resetGlobalViewState, updateButtons, fileStates, saveSession, restoreSession } from "./viewState.js";
-import { tabs, createTab, renderTabs } from "./tabs.js";
+import { tabs, createTab, renderTabs, saveCurrentTabState } from "./tabs.js";
 
 import {webPageInput, fetchUrlInput} from './chatsb.js'
 const scale = 1;
@@ -413,6 +413,7 @@ function highlightLine(lineIndex, silent = false) {
     if (!silent) {
         targetLine.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+    saveCurrentTabState();
     saveSession();
 }
 
@@ -585,6 +586,7 @@ export async function navToPage(pageNum, { restoreHighlight = false, resetLine =
             viewerRight.scrollTop = state.scroll;
         });
     }
+    saveCurrentTabState();
     saveSession();
 }
 

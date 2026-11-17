@@ -1,5 +1,6 @@
 import { fileStates, initFileStates, saveSession } from "./viewState.js";
 import { buildCourseWorkspace, clearFolders, genFoldersFromPDF, renderFolders, folders, assignAllFiles } from "./courseFolders.js";
+import { saveCurrentTabState } from "./tabs.js";
 
 let draggingItem = null;
 export let resetViewCallback = null;
@@ -140,6 +141,11 @@ function setupFolderControls() {
                     "scheduleInput"
                 ).value.trim();
 
+            if (!text && !selectedSchedulePdf) {
+                alert("Provide schedule text or PDF.");
+                return;
+            }
+
             if (text) {
                 buildCourseWorkspace(
                     text,
@@ -152,11 +158,7 @@ function setupFolderControls() {
                 assignAllFiles(fileInput);
             }
 
-            else {
-                alert("Provide schedule text or PDF.");
-                return;
-            }
-
+            assignAllFiles(fileInput);
             refreshFolders();
             saveSession();
         }
@@ -532,6 +534,8 @@ export async function loadFileByIndex(index, options = {}) {
     }
     await loadFileCallback(entry, options);
     highlightSelectedFile();
+    saveCurrentTabState();
+    saveSession();
     console.log(`Loading file: ${entry.name}`);
 
 }
