@@ -468,6 +468,53 @@ async function getNextPage() {
     }
 }
 
+nextLineBtn.title = "Next Line (Ctrl+↓)";
+prevLineBtn.title = "Previous Line (Ctrl+↑)";
+nextPageBtn.title = "Next Page (Ctrl+→)";
+prevPageBtn.title = "Previous Page (Ctrl+←)";
+
+document.addEventListener("keydown", (e) => {
+
+    if (e.ctrlKey && e.shiftKey) {
+
+        switch (e.key) {
+            case "ArrowUp":
+                e.preventDefault();
+                prevRelevant();
+                return;
+
+            case "ArrowDown":
+                e.preventDefault();
+                nextRelevant();
+                return;
+        }
+    }
+
+    if (!e.ctrlKey) return;
+
+    switch (e.key) {
+        case "ArrowUp":
+            e.preventDefault();
+            prevLineBtn.click();
+            break;
+
+        case "ArrowDown":
+            e.preventDefault();
+            nextLineBtn.click();
+            break;
+
+        case "ArrowLeft":
+            e.preventDefault();
+            prevPageBtn.click();
+            break;
+
+        case "ArrowRight":
+            e.preventDefault();
+            nextPageBtn.click();
+            break;
+    }
+});
+
 export function getCurrentPageText() {
     if (!viewState.text || !viewState.text.items) return "";
 
